@@ -11,7 +11,7 @@ services:
     network_mode: host
     environment:
       BIND: "0.0.0.0:8088"
-      TZ: "Europe/Madrid"
+      TZ: "Europe/Madrid"                 # your time zone, for the timestamps in the server log
       # CALEON_HOST: "192.168.1.50"        # fixed IP instead of broadcast discovery
       # TRANSPORT: "udp"                   # initial mode (udp/session/sdk); later changed in Ajustes
       # CALEON_EMAIL: "tu-correo@ejemplo.com"  # only for the "session" mode
