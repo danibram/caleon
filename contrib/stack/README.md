@@ -14,7 +14,7 @@ docker compose up -d
 - Grafana at `http://<nas-ip>:3000` (admin / admin), dashboard "°CALEON".
 - Prometheus at `http://<nas-ip>:9090`.
 
-`test.sh` checks the whole chain: it brings the stack up in a fresh `./data`, onboards a throwaway Home
+`test.sh` checks the whole chain. It brings the stack up in a fresh `./data`, onboards a throwaway Home
 Assistant user, connects HA to the broker through the API and verifies the climate entities, the Prometheus
 scrape and the Grafana dashboard. `./test.sh --down` removes everything afterwards. With `--no-caleon` it
 skips the caleon container, for a server running outside Docker (`CALEON_URL`).

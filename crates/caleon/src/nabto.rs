@@ -74,8 +74,8 @@ unsafe fn take_string(p: *mut c_char) -> Option<String> {
     Some(s)
 }
 
-/// Process-wide SDK initialisation. nabtoShutdown is never called: it can block for a long
-/// time, and the process exits instead.
+/// Process-wide SDK initialisation. nabtoShutdown is never called because it can block for a
+/// long time, so the process exits instead.
 pub fn startup(home: &Path) -> Result<String, NabtoError> {
     std::fs::create_dir_all(home).ok();
     let home = cstring(&home.to_string_lossy());

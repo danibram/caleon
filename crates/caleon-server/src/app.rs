@@ -70,7 +70,7 @@ pub struct Room {
     pub kind: String,
     pub temperature: String,
     pub humidity: String,
-    /// ts-rs cannot flatten an Option: web/src/api/types.ts adds the RoomState fields.
+    /// ts-rs cannot flatten an Option, so web/src/api/types.ts adds the RoomState fields.
     #[serde(flatten)]
     #[ts(skip)]
     pub state: Option<RoomState>,
@@ -217,7 +217,7 @@ impl App {
         let metrics = status::parse(&pages.concat());
 
         let ts = now();
-        // weekly programs change rarely: reread them every 10 minutes
+        // weekly programs change rarely, so reread them every 10 minutes
         let (prev_weeks, weeks_at) = {
             let snap = self.snapshot.read().unwrap();
             (
@@ -316,7 +316,7 @@ impl App {
 
     // ---- crawler
 
-    /// Walks the device menu read-only: only enters "goto:" entries of string lists and dynamic
+    /// Walks the device menu read-only. It only enters "goto:" entries of string lists and dynamic
     /// lists that open sub-menus, never presses yes/no, +/- or selections, and skips entries
     /// such as factory reset or firmware update. Blocking.
     pub fn crawl_menu(&self) -> Result<Value> {
@@ -357,7 +357,7 @@ impl App {
         Ok(tree)
     }
 
-    /// Retries a device call a few times: the device occasionally drops a UDP answer.
+    /// Retries a device call a few times, because the device occasionally drops a UDP answer.
     fn retry<T>(&self, mut f: impl FnMut() -> Result<T>) -> Result<T> {
         let mut last = None;
         for attempt in 0..4 {
@@ -439,7 +439,7 @@ impl App {
                     self.device.menu_action(ext, "", "")
                 };
                 if landed.as_ref().ok().and_then(|l| l["id"].as_str()) != Some(id.as_str()) {
-                    // lost answer or unexpected screen: get back on track through the root
+                    // lost answer or unexpected screen, so get back on track through the root
                     tracing::warn!(
                         "crawl: back from {child_id} did not land on {id}, re-navigating"
                     );
@@ -466,7 +466,7 @@ impl App {
                 .and_then(|i| i["action"].as_str())
                 .ok_or_else(|| anyhow!("menu entry {title} not found"))?
                 .to_string();
-            // only open screens: a title can also name a selection or a toggle, which would write
+            // only open screens, because a title can also name a selection or a toggle, which would write
             if !action.starts_with("goto:") {
                 bail!("menu entry {title} is not a screen");
             }
@@ -704,8 +704,8 @@ pub fn flatten_values(node: &Value, out: &mut Vec<(String, String)>) {
                     a.iter()
                         .filter(|i| i["highlighted"].as_u64().unwrap_or(0) != 0)
                         .map(|i| {
-                            // sensor pickers show live readings in the title ("1-Wire Sensor:25.2°C ..."):
-                            // the configured choice is the sensor id, not its current value
+                            // sensor pickers show live readings in the title ("1-Wire Sensor:25.2°C ..."),
+                            // so the configured choice is the sensor id, not its current value
                             let title = i["title"].as_str().unwrap_or("");
                             let live =
                                 title.contains(':') && title.chars().any(|c| c.is_ascii_digit());

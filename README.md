@@ -3,10 +3,10 @@
 [Español](README.es.md)
 
 A Rust server to monitor and control a SOREL °CALEON thermostat from your own network, with no Sorel app and
-no Sorel cloud. Made to run on a NAS with Docker. Pure Rust: it does not need the Nabto SDK.
+no Sorel cloud. Made to run on a NAS with Docker. It is pure Rust and does not need the Nabto SDK.
 
 > Independent project, not affiliated with SOREL or Nabto. The protocol comes from watching how the official
-> app talks to the device. It writes to your heating: use it at your own risk.
+> app talks to the device. It writes to your heating, so use it at your own risk.
 
 The web UI covers everything the official app does (°CALEON 7.0.36) and a bit more. It is designed for the
 phone first (bottom tab bar, light and dark theme, page transitions) and works the same on a desktop. The UI
@@ -27,7 +27,7 @@ text is in Spanish.
 - Schedules: all 7 days in half-hour slots for heating and cooling, painted with the mouse or a finger, plus
   "copy to next day / Monday-Friday / Saturday-Sunday / Monday-Sunday".
 - Expert: the device's whole menu (language, date and time, devices, rooms, °Cbox functions, zones, WiFi,
-  service values, lock, factory values...). It is the same remote menu the app draws: the °CALEON sends each
+  service values, lock, factory values...). It is the same remote menu the app draws. The °CALEON sends each
   screen and the web renders it.
 - Status: inputs (1-Wire sensors, humidity, PWM), outputs (pump and zone relays, with the room each zone heats)
   and the circuit pump.
@@ -53,8 +53,8 @@ The connection mode is chosen in Settings:
 
 - **Direct over the local network** (default): the UDP protocol above, with no access control.
 - **Session with e-mail**: uNabto's local connection with a session (`U_CONNECT` plus `DATA` packets with the
-  null cipher). Same as direct but with access control: it needs an e-mail that is authorized on the device
-  (Expert › Settings › WiFi › Access control). A fallback in case the direct mode ever stops working.
+  null cipher). Same as direct but with access control, so it needs an e-mail that is authorized on the device
+  (Expert › Settings › WiFi › Access control). It is a fallback in case the direct mode ever stops working.
 - **Official Nabto SDK**: the closed Nabto 4.3 library, x86_64 only. Only offered when the binary was built
   with `--features nabto-sdk` (see below).
 
@@ -66,7 +66,7 @@ the factory; this server does not open anything. Keep it in mind if your network
 
 ### Nabto SDK (optional)
 
-A fallback mode: it talks to the device through the official Nabto 4.3 client library instead of the UDP
+A fallback mode that talks to the device through the official Nabto 4.3 client library instead of the UDP
 protocol written in Rust. In testing, a full backup taken through the SDK and one taken in direct mode came out
 identical, so it is only worth using if the direct mode ever stops working, or to compare results.
 
@@ -83,7 +83,7 @@ vendor/nabto4/mac64/lib/libnabto_client_api_static.a
 vendor/nabto4/mac64/lib/libnabto_static_external.a
 ```
 
-`vendor/` is in `.gitignore`. The header is not needed: the functions in use are declared in `src/nabto.rs`.
+`vendor/` is in `.gitignore`. The header is not needed, because the functions in use are declared in `src/nabto.rs`.
 The terms of use of those libraries are Nabto's, not this project's.
 
 **Building.**
@@ -109,11 +109,11 @@ menu actions) are sent once, as in the other modes.
 
 **Limitations.**
 
-- x86_64 only. Nabto publishes the library for 64-bit Intel Linux and macOS: there is no SDK mode on an ARM
+- x86_64 only. Nabto publishes the library for 64-bit Intel Linux and macOS, so there is no SDK mode on an ARM
   NAS, a Raspberry Pi or Apple Silicon natively. The direct and session modes have no such limit.
-- On Linux it must be linked with GNU ld (`build.rs` adds `-fuse-ld=bfd`): the SDK was built with GCC 4.9 and
+- On Linux it must be linked with GNU ld (`build.rs` adds `-fuse-ld=bfd`), because the SDK was built with GCC 4.9 and
   registers constructors in `.ctors` sections, which `lld`, rustc's default linker, does not run.
-- It is closed source: it cannot be audited or fixed.
+- It is closed source, so it cannot be audited or fixed.
 - CI does not build it, since it has no copy of the library, so a change can break it unnoticed until someone
   builds it by hand.
 - On shutdown the process exits without calling `nabtoShutdown`, which can block for a long time. The profile
@@ -148,10 +148,10 @@ With the code on the NAS, `docker compose up -d --build` after uncommenting `bui
 `docker-compose.yml` does the same.
 
 Without Docker, the [releases](https://github.com/danibram/caleon/releases) carry static binaries for Linux
-(amd64, arm64) and macOS (Apple Silicon): unpack, then `DATA_DIR=./data ./caleon`. Each release also tags
+(amd64, arm64) and macOS (Apple Silicon). Unpack, then `DATA_DIR=./data ./caleon`. Each release also tags
 the image as `ghcr.io/danibram/caleon:X.Y.Z`.
 
-The web UI is at `http://<nas-ip>:8088`. It has no user or password: anyone on your network can change the
+The web UI is at `http://<nas-ip>:8088`. It has no user or password, so anyone on your network can change the
 heating. If you expose it outside your home, put it behind an authenticating proxy or a VPN.
 
 `network_mode: host` lets the server find the thermostat by broadcast. With a fixed IP (`CALEON_HOST` or in
@@ -179,11 +179,11 @@ the container cannot find the thermostat. A Linux NAS has no such problem.
 | `MQTT_URL` | (empty) | `mqtt://user:password@host:1883` turns on the Home Assistant integration |
 | `MQTT_TOPIC` | `caleon` | base of the MQTT topics |
 | `MQTT_DISCOVERY_PREFIX` | `homeassistant` | Home Assistant's discovery prefix |
+| `READ_ONLY` | (empty) | with `1`, the web shows everything but the server refuses every change to the thermostat (for a display-only screen or for testing) |
 
 With `WEB=0`, `HISTORY=0` and `BACKUP_HOURS=0` the server is a plain service that reads the thermostat once a
 minute and feeds Prometheus and Home Assistant. `contrib/stack/docker-compose.yml` runs it that way next to
 Mosquitto, Home Assistant, Prometheus and Grafana, and `contrib/stack/test.sh` checks the whole chain.
-| `READ_ONLY` | (empty) | with `1`, the web shows everything but the server refuses every change to the thermostat (for a display-only screen or for testing) |
 
 The thermostat treats every remote query as someone using it and keeps its screen lit. With one read per
 minute the screen turns off between reads; with several servers or tabs reading it at once, it does not.
@@ -197,12 +197,12 @@ Each backup is a JSON file with:
 - which zone heats each room;
 - the whole expert menu tree with the value of every screen.
 
-To read the menu, the server walks it as a person would on the screen: it only enters submenus and goes back.
+To read the menu, the server walks it as a person would on the screen. It only enters submenus and goes back.
 It never presses yes/no, +/− or selections, and it does not enter Factory values, System update or Select
 network (that one starts a WiFi scan). It takes about a minute.
 
 A restore writes room names and schedules. Expert menu settings are only compared, because the device does not
-allow writing them directly: they are changed step by step with +/− from Expert, and the comparison tells you
+allow writing them directly. They are changed step by step with +/− from Expert, and the comparison tells you
 which screens differ.
 
 ## Home Assistant
@@ -301,12 +301,12 @@ cd web && pnpm install && pnpm dev
 ```
 
 `CALEON_API=http://127.0.0.1:8089 pnpm dev` points the proxy at another server. `VITE_MOCK=1 pnpm dev` starts
-the UI with no server and no thermostat: it answers with the captured data in `web/src/mocks`, with timestamps
+the UI with no server and no thermostat. It answers with the captured data in `web/src/mocks`, with timestamps
 shifted to now, and rejects changes like a read-only server.
 
 To bundle the UI into the binary: `cd web && pnpm build`, then `cargo build --release`.
 
-TypeScript types from the Rust structs: `cargo test export_types` (writes `web/src/api/generated/`).
+`cargo test export_types` writes the TypeScript types of the Rust structs to `web/src/api/generated/`.
 
 On macOS it runs natively. The first time, the system asks for the "Local network" permission for the binary;
 without it the thermostat is not found. To try the SDK mode, build for Intel and run under Rosetta:
@@ -367,7 +367,7 @@ the background, so valves and pump show up as soon as they react.
   with a CRYPT payload of suite 0x000A (no encryption), 1-2 padding bytes and a 16-bit checksum at the end
   (counted in the payload length). Sequence in bytes 12-13, about 150 RPCs per session with 250 ms between
   sends.
-- With the SDK mode on Linux, `crates/caleon/build.rs` forces the `bfd` linker: the SDK was built with GCC 4.9 and registers
+- With the SDK mode on Linux, `crates/caleon/build.rs` forces the `bfd` linker, because the SDK was built with GCC 4.9 and registers
   constructors in `.ctors` sections, which `lld`, rustc's default linker, does not run.
 
 ## License

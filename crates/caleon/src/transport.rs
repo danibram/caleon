@@ -123,7 +123,7 @@ pub struct Found {
     pub addr: SocketAddr,
 }
 
-/// Local discovery: asks every device (or the one at `target`) to announce itself.
+/// Local discovery that asks every device (or the one at `target`) to announce itself.
 pub fn discover(target: Option<Ipv4Addr>, wait: Duration) -> Result<Vec<Found>> {
     let sock = UdpSocket::bind("0.0.0.0:0")?;
     sock.set_broadcast(true)?;
@@ -168,7 +168,7 @@ pub fn discover(target: Option<Ipv4Addr>, wait: Duration) -> Result<Vec<Found>> 
 
 // ---- Local connection with a session (uNabto U_CONNECT + null-crypto DATA).
 //
-// Unlike the legacy protocol this one has access control: the device only accepts clients whose
+// Unlike the legacy protocol this one has access control. The device only accepts clients whose
 // e-mail is in its "Control de acceso" list. The handshake is U_CONNECT with an IPX and a CP_ID
 // (e-mail) payload; the device replies with NOTIFY connect-ok and a session id. Each later RPC is
 // a DATA packet carrying a CRYPT payload with crypto suite 0x000A (no encryption), a 2-byte

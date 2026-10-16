@@ -53,11 +53,11 @@ fn bad(msg: impl Into<String>) -> ApiError {
 
 type ApiResult = Result<Json<Value>, ApiError>;
 
-/// Bumped by every write: a newer write takes over the rereads of the previous one.
+/// Bumped by every write, so a newer write takes over the rereads of the previous one.
 static REREAD_GEN: AtomicU64 = AtomicU64::new(0);
 
-/// After a change, reread everything a few more times in the background: valves, pump and the
-/// other rooms react seconds later. Writes in a row (a week of schedule, several taps on +)
+/// After a change, reread everything a few more times in the background, because valves, pump and
+/// the other rooms react seconds later. Writes in a row (a week of schedule, several taps on +)
 /// share one series of rereads. The poller keeps its own one-minute rhythm.
 pub(crate) fn reread_later(app: &AppState, now: bool) {
     let gen = REREAD_GEN.fetch_add(1, Ordering::SeqCst) + 1;
@@ -495,7 +495,7 @@ async fn room_change(
         }
         let st = a.device.room_state(id, &change)?;
         a.apply_room_state(id, st.clone());
-        // "all rooms" changes every room: read them all before answering so the answer shows it.
+        // "all rooms" changes every room, so read them all before answering and the answer shows it.
         // A single room answers right away; its valves and the rest follow in the background.
         if id == SYSTEM_ROOM {
             if let Err(e) = a.refresh(false) {

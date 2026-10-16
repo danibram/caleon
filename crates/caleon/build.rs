@@ -38,7 +38,7 @@ fn link_nabto_sdk() {
     println!("cargo:rustc-link-lib=static=nabto_static_external");
     if os == "linux" {
         // the SDK was built with GCC 4.9 and registers constructors in .ctors sections, which
-        // rustc's default linker (lld) does not run: link with GNU ld instead
+        // rustc's default linker (lld) does not run, so link with GNU ld instead
         println!("cargo:rustc-link-arg=-fuse-ld=bfd");
         for lib in ["stdc++", "pthread", "dl", "rt", "m"] {
             println!("cargo:rustc-link-lib=dylib={lib}");

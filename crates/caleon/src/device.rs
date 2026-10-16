@@ -77,7 +77,7 @@ impl Device {
         self.transport().invoke(query, args, true)
     }
 
-    /// Calls relative to the current state (setpoint steps, menu actions): never retried.
+    /// Calls relative to the current state (setpoint steps, menu actions), never retried.
     pub fn rpc_once(&self, query: &str, args: &[(&str, Arg)]) -> Result<Value> {
         self.transport().invoke(query, args, false)
     }

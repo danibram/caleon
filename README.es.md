@@ -3,10 +3,10 @@
 [English](README.md)
 
 Servidor en Rust para monitorizar y controlar un termostato SOREL °CALEON desde la red local, sin la app ni la
-nube de Sorel. Pensado para correr en un NAS con Docker. Es Rust puro: no necesita el SDK de Nabto.
+nube de Sorel. Pensado para correr en un NAS con Docker. Es Rust puro y no necesita el SDK de Nabto.
 
 > Proyecto independiente, sin relación con SOREL ni con Nabto. El protocolo viene de observar cómo habla la app
-> oficial con el equipo. Escribe en tu calefacción: úsalo bajo tu responsabilidad.
+> oficial con el equipo. Escribe en tu calefacción, así que úsalo bajo tu responsabilidad.
 
 La web tiene lo mismo que la app oficial (°CALEON 7.0.36) y algo más. Está pensada sobre todo para el móvil
 (barra de pestañas abajo, tema claro y oscuro, transiciones entre pantallas) y funciona igual en el ordenador:
@@ -27,7 +27,7 @@ La web tiene lo mismo que la app oficial (°CALEON 7.0.36) y algo más. Está pe
 - Horarios: los 7 días en franjas de media hora para calefacción y refrigeración, pintando con el ratón o el dedo,
   y "copiar a día siguiente / lunes-viernes / sábado-domingo / lunes-domingo".
 - Experto: el menú completo del equipo (idioma, fecha y hora, dispositivos, habitaciones, funciones °Cbox, zonas,
-  WiFi, valores de servicio, bloqueo, valores de fábrica...). Es el mismo menú remoto que pinta la app: el
+  WiFi, valores de servicio, bloqueo, valores de fábrica...). Es el mismo menú remoto que pinta la app. El
   °CALEON manda cada pantalla y la web la dibuja.
 - Estado: entradas (sensores 1-Wire, humedad, PWM), salidas (bomba y relés de zona, con la habitación que
   calienta cada zona) y bomba de circuito.
@@ -53,8 +53,8 @@ En Ajustes se elige el modo de conexión:
 
 - **Directo por la red local** (por defecto): el protocolo UDP de arriba, sin control de acceso.
 - **Con sesión y correo**: la conexión local de uNabto con sesión (`U_CONNECT` + paquetes `DATA` con cifrado
-  nulo). Igual que el modo directo pero con control de acceso: necesita un correo que esté autorizado en el
-  equipo (Experto › Ajustes › WiFi › Control de acceso). Respaldo por si el modo directo dejara de funcionar.
+  nulo). Igual que el modo directo pero con control de acceso, así que necesita un correo que esté autorizado en el
+  equipo (Experto › Ajustes › WiFi › Control de acceso). Es un respaldo por si el modo directo dejara de funcionar.
 - **SDK oficial de Nabto**: la librería cerrada de Nabto 4.3, solo para x86_64. Solo aparece si el binario se
   compiló con `--features nabto-sdk` (ver abajo).
 
@@ -65,7 +65,7 @@ no lo abre este servidor; tenlo en cuenta si tu red tiene invitados.
 
 ### SDK de Nabto (opcional)
 
-Modo de respaldo: habla con el equipo a través de la librería cliente oficial de Nabto 4.3 en vez del
+Modo de respaldo que habla con el equipo a través de la librería cliente oficial de Nabto 4.3 en vez del
 protocolo UDP en Rust. En las pruebas, una copia completa hecha con el SDK y otra con el modo directo salieron
 idénticas, así que solo tiene sentido si el modo directo dejara de funcionar o para comparar resultados.
 
@@ -82,7 +82,7 @@ vendor/nabto4/mac64/lib/libnabto_client_api_static.a
 vendor/nabto4/mac64/lib/libnabto_static_external.a
 ```
 
-`vendor/` está en `.gitignore`. No hace falta la cabecera: las funciones que se usan están declaradas en
+`vendor/` está en `.gitignore`. No hace falta la cabecera, porque las funciones que se usan están declaradas en
 `src/nabto.rs`. Las condiciones de uso de esas librerías son las de Nabto, no las de este proyecto.
 
 **Compilar.**
@@ -108,11 +108,11 @@ arrancar con `TRANSPORT=sdk`. La primera vez el SDK crea un perfil autofirmado (
 
 **Limitaciones.**
 
-- Solo x86_64. Nabto publica la librería para Linux y macOS de 64 bits Intel: no hay modo SDK en un NAS ARM,
+- Solo x86_64. Nabto publica la librería para Linux y macOS de 64 bits Intel, así que no hay modo SDK en un NAS ARM,
   en una Raspberry Pi ni en Apple Silicon en nativo. Los modos directo y con sesión no tienen este límite.
-- En Linux hay que enlazar con GNU ld (`build.rs` añade `-fuse-ld=bfd`): el SDK se compiló con GCC 4.9 y
+- En Linux hay que enlazar con GNU ld (`build.rs` añade `-fuse-ld=bfd`), porque el SDK se compiló con GCC 4.9 y
   registra constructores en secciones `.ctors` que `lld`, el enlazador por defecto de rustc, no ejecuta.
-- Es código cerrado: no se puede auditar ni corregir.
+- Es código cerrado, así que no se puede auditar ni corregir.
 - La integración continua no lo compila porque no tiene la librería, así que un cambio puede romperlo sin que
   se note hasta que alguien lo compile a mano.
 - Al parar el servidor, el proceso sale sin llamar a `nabtoShutdown`, que puede quedarse bloqueado mucho
@@ -147,10 +147,10 @@ Con el código en el NAS, `docker compose up -d --build` hace lo mismo tras desc
 `docker-compose.yml`.
 
 Sin Docker, las [releases](https://github.com/danibram/caleon/releases) traen binarios estáticos para Linux
-(amd64, arm64) y macOS (Apple Silicon): descomprimir y `DATA_DIR=./data ./caleon`. Cada release etiqueta
+(amd64, arm64) y macOS (Apple Silicon). Descomprime y ejecuta `DATA_DIR=./data ./caleon`. Cada release etiqueta
 también la imagen como `ghcr.io/danibram/caleon:X.Y.Z`.
 
-La web queda en `http://<ip-del-nas>:8088`. No tiene usuario ni contraseña: cualquiera en tu red puede
+La web queda en `http://<ip-del-nas>:8088`. No tiene usuario ni contraseña, así que cualquiera en tu red puede
 cambiar la calefacción. Si la expones fuera de casa, ponla detrás de un proxy con autenticación o de una VPN.
 
 `network_mode: host` permite encontrar el termostato por broadcast. Si fijas su IP (`CALEON_HOST` o en
@@ -178,11 +178,11 @@ que en el Mac el contenedor no encuentra el termostato. En un NAS Linux no pasa.
 | `MQTT_URL` | (vacío) | `mqtt://usuario:clave@host:1883` activa la integración con Home Assistant |
 | `MQTT_TOPIC` | `caleon` | base de los topics MQTT |
 | `MQTT_DISCOVERY_PREFIX` | `homeassistant` | prefijo de descubrimiento de Home Assistant |
+| `READ_ONLY` | (vacío) | con `1`, la web lo enseña todo pero el servidor rechaza cualquier cambio en el termostato (sirve para una pantalla de consulta o para hacer pruebas) |
 
 Con `WEB=0`, `HISTORY=0` y `BACKUP_HOURS=0` el servidor se queda en un servicio que lee el termostato una vez
 por minuto y alimenta Prometheus y Home Assistant. `contrib/stack/docker-compose.yml` lo arranca así junto a
 Mosquitto, Home Assistant, Prometheus y Grafana, y `contrib/stack/test.sh` comprueba toda la cadena.
-| `READ_ONLY` | (vacío) | con `1`, la web lo enseña todo pero el servidor rechaza cualquier cambio en el termostato (sirve para una pantalla de consulta o para hacer pruebas) |
 
 El termostato trata cada consulta remota como si alguien lo estuviera usando y mantiene la pantalla encendida.
 Con una lectura por minuto se apaga sola entre lecturas; con varios servidores o pestañas leyéndolo a la vez,
@@ -197,12 +197,12 @@ Cada copia es un JSON con:
 - qué zona calienta cada habitación;
 - el árbol completo del menú experto con el valor de cada pantalla.
 
-Para leer el menú, el servidor lo recorre como lo haría una persona en la pantalla: solo entra en submenús y
+Para leer el menú, el servidor lo recorre como lo haría una persona en la pantalla. Solo entra en submenús y
 vuelve atrás. Nunca pulsa sí/no, +/− ni selecciones, y no entra en Valores de fábrica, Actualización del sistema
 ni Seleccionar red (lanza un escaneo WiFi). Tarda alrededor de un minuto.
 
 La restauración escribe nombres de habitación y horarios. Los ajustes del menú experto solo se comparan, porque el
-equipo no permite escribirlos directamente: se cambian paso a paso con +/− desde Experto, y la comparación te dice
+equipo no permite escribirlos directamente. Se cambian paso a paso con +/− desde Experto, y la comparación te dice
 qué pantallas difieren.
 
 ## Home Assistant
@@ -304,12 +304,12 @@ cd web && pnpm install && pnpm dev
 ```
 
 `CALEON_API=http://127.0.0.1:8089 pnpm dev` apunta el proxy a otro servidor. `VITE_MOCK=1 pnpm dev` arranca
-la UI sin servidor ni termostato: responde con los datos capturados en `web/src/mocks`, con las horas
+la UI sin servidor ni termostato. Responde con los datos capturados en `web/src/mocks`, con las horas
 movidas al momento actual, y rechaza los cambios como un servidor en solo lectura.
 
 Para empaquetar la UI en el binario: `cd web && pnpm build`, luego `cargo build --release`.
 
-Tipos TypeScript desde los structs de Rust: `cargo test export_types` (escribe en `web/src/api/generated/`).
+`cargo test export_types` escribe los tipos TypeScript de los structs de Rust en `web/src/api/generated/`.
 
 En macOS corre en nativo. La primera vez el sistema pide el permiso de "Red local" para el binario; sin él no
 encuentra el termostato. Para probar el modo SDK hay que compilar para Intel y correr bajo Rosetta:
@@ -371,7 +371,7 @@ reaccionan.
   `DATA` con una carga CRYPT de suite 0x000A (sin cifrar), 1-2 bytes de relleno y una suma de comprobación de 16
   bits al final (incluida en la longitud de la carga). Secuencia en los bytes 12-13, ~150 RPC por sesión con 250
   ms entre envíos.
-- Con el modo SDK en Linux, `crates/caleon/build.rs` fuerza el enlazador `bfd`: el SDK se compiló con GCC 4.9 y registra
+- Con el modo SDK en Linux, `crates/caleon/build.rs` fuerza el enlazador `bfd`, porque el SDK se compiló con GCC 4.9 y registra
   constructores en secciones `.ctors` que `lld`, el enlazador por defecto de rustc, no ejecuta.
 
 ## Licencia

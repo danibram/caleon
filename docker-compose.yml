@@ -2,7 +2,7 @@ services:
   caleon:
     # built for linux/amd64 and linux/arm64 on every push to main; use a vX.Y.Z tag to pin a release
     image: ghcr.io/danibram/caleon:latest
-    # to build from this checkout instead: uncomment and run `docker compose up -d --build`
+    # to build from this checkout instead, uncomment and run `docker compose up -d --build`
     # build: .
     container_name: caleon
     restart: unless-stopped

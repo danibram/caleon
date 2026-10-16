@@ -9,8 +9,8 @@ use std::sync::Mutex;
 
 pub struct Store {
     db: Mutex<Connection>,
-    /// Last setpoint seen per (room, mode). Kept in memory: /api/state asks for it on every call
-    /// and computing it from the samples table means a full scan.
+    /// Last setpoint seen per (room, mode). Kept in memory because /api/state asks for it on every
+    /// call and computing it from the samples table means a full scan.
     mode_temps: Mutex<BTreeMap<(u16, String), f64>>,
 }
 

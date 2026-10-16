@@ -13,5 +13,5 @@ pnpm lint
 pnpm build
 ```
 
-TypeScript types for the API come from the Rust structs: `cargo test export_types` writes
+TypeScript types for the API come from the Rust structs. `cargo test export_types` writes
 `src/api/generated/`. See the [main README](../README.md) for the server and the API.
