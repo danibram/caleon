@@ -92,7 +92,6 @@ async fn blocking<T: Send + 'static>(
 pub fn router(app: AppState) -> Router {
     Router::new()
         .route("/", get(index))
-        .route("/assets/*path", get(asset))
         .route("/icons/:name", get(icon))
         .route("/api/state", get(state))
         .route("/api/refresh", post(refresh))
@@ -112,6 +111,7 @@ pub fn router(app: AppState) -> Router {
         .route("/api/backups", get(backups_list).post(backup_create))
         .route("/api/backups/:name", get(backup_get).delete(backup_delete))
         .route("/api/backups/:name/restore", post(backup_restore))
+        .fallback(get(static_file))
         .with_state(app)
 }
 
@@ -159,8 +159,10 @@ fn asset_mime(path: &str) -> &'static str {
     }
 }
 
-async fn asset(axum::extract::Path(path): axum::extract::Path<String>) -> Response {
-    let key = path.trim_start_matches('/');
+/// Files of the built web app (`/assets/index-*.js`, `/favicon.svg`...). Anything else that is
+/// not an API path gets the app's index, so a bookmarked page still loads.
+async fn static_file(uri: axum::http::Uri) -> Response {
+    let key = uri.path().trim_start_matches('/');
     match WebDist::get(key) {
         Some(file) => (
             [
@@ -177,7 +179,10 @@ async fn asset(axum::extract::Path(path): axum::extract::Path<String>) -> Respon
             file.data.into_owned(),
         )
             .into_response(),
-        None => StatusCode::NOT_FOUND.into_response(),
+        None if key.starts_with("api/") || key.starts_with("assets/") => {
+            StatusCode::NOT_FOUND.into_response()
+        }
+        None => spa_index(),
     }
 }
 

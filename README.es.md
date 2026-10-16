@@ -57,10 +57,60 @@ no lo abre este servidor; tenlo en cuenta si tu red tiene invitados.
 
 ### SDK de Nabto (opcional)
 
-La librería cliente de Nabto 4 es software cerrado y no está en este repositorio. Si la tienes, copia las
-librerías estáticas en `vendor/nabto4/linux64/lib` (o `vendor/nabto4/mac64/lib`) y la cabecera en
-`vendor/nabto4/include`, o apunta `NABTO_SDK_DIR` a una carpeta con esa misma estructura. `vendor/` está en
-`.gitignore`. Después compila con `cargo build --release --features nabto-sdk`.
+Modo de respaldo: habla con el equipo a través de la librería cliente oficial de Nabto 4.3 en vez del
+protocolo UDP en Rust. En las pruebas, una copia completa hecha con el SDK y otra con el modo directo salieron
+idénticas, así que solo tiene sentido si el modo directo dejara de funcionar o para comparar resultados.
+
+**Conseguir la librería.** Es software cerrado y no está en este repositorio. Nabto la distribuye dentro de su
+wrapper de Python, [nabto/nabto4-python-wrapper](https://github.com/nabto/nabto4-python-wrapper): las carpetas
+`extension/linux64/lib` y `extension/mac64/lib` traen `libnabto_client_api_static.a` y
+`libnabto_static_external.a`. Cópialas con esta estructura, o apunta `NABTO_SDK_DIR` a una carpeta que la
+tenga:
+
+```
+vendor/nabto4/linux64/lib/libnabto_client_api_static.a
+vendor/nabto4/linux64/lib/libnabto_static_external.a
+vendor/nabto4/mac64/lib/libnabto_client_api_static.a
+vendor/nabto4/mac64/lib/libnabto_static_external.a
+```
+
+`vendor/` está en `.gitignore`. No hace falta la cabecera: las funciones que se usan están declaradas en
+`src/nabto.rs`. Las condiciones de uso de esas librerías son las de Nabto, no las de este proyecto.
+
+**Compilar.**
+
+```sh
+# Linux x86_64 (necesita GNU ld, paquete binutils)
+cargo build --release --features nabto-sdk
+
+# macOS: la librería es solo para Intel; en Apple Silicon corre bajo Rosetta
+rustup target add x86_64-apple-darwin
+cargo build --release --target x86_64-apple-darwin --features nabto-sdk
+
+# Docker (solo amd64), con vendor/nabto4 ya copiado al lado del Dockerfile
+docker build --platform linux/amd64 --build-arg FEATURES=nabto-sdk -t caleon:latest .
+```
+
+Si falta la librería, `build.rs` para la compilación diciendo en qué ruta la buscaba.
+
+**Usar.** Con un binario compilado así, en Ajustes aparece el modo "SDK oficial de Nabto"; también se puede
+arrancar con `TRANSPORT=sdk`. La primera vez el SDK crea un perfil autofirmado (`caleon-nas`) en
+`DATA_DIR/nabto/` y lo reutiliza después. Las lecturas se reintentan hasta tres veces; los cambios relativos
+(consigna, acciones del menú) se envían una sola vez, igual que en los otros modos.
+
+**Limitaciones.**
+
+- Solo x86_64. Nabto publica la librería para Linux y macOS de 64 bits Intel: no hay modo SDK en un NAS ARM,
+  en una Raspberry Pi ni en Apple Silicon en nativo. Los modos directo y con sesión no tienen este límite.
+- En Linux hay que enlazar con GNU ld (`build.rs` añade `-fuse-ld=bfd`): el SDK se compiló con GCC 4.9 y
+  registra constructores en secciones `.ctors` que `lld`, el enlazador por defecto de rustc, no ejecuta.
+- Es código cerrado: no se puede auditar ni corregir.
+- La integración continua no lo compila porque no tiene la librería, así que un cambio puede romperlo sin que
+  se note hasta que alguien lo compile a mano.
+- Al parar el servidor, el proceso sale sin llamar a `nabtoShutdown`, que puede quedarse bloqueado mucho
+  tiempo. El perfil ya está en disco, así que no se pierde nada.
+- El SDK solo sustituye las consultas. El servidor sigue encontrando el equipo por descubrimiento UDP (o por
+  `CALEON_HOST`) para saber su ID, así que esa parte tiene que funcionar igualmente.
 
 ## Instalar en el NAS
 
