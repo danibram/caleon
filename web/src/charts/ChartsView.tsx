@@ -133,6 +133,9 @@ function Charts({ state }: { state: StateSnapshot }) {
           ) : null}
         </div>
         <RoomChart hours={hours} state={state} svgId="c1" what="temp" />
+        <p className="muted small">
+          Los sensores del propio termostato muestran décimas, pero su precisión es de ±1 °C y ±6 % de humedad.
+        </p>
       </div>
 
       <div className="card chart-card">

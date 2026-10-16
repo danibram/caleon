@@ -11,4 +11,8 @@ zones: { [key: string]: string },
 /**
  * Sensor label ("1", "116.2") -> device room name, from Habitaciones > <room> > Temperatura.
  */
-sensors: { [key: string]: string }, updated: number | null, error: string | null, };
+sensors: { [key: string]: string }, 
+/**
+ * CAN id -> device name ("116" -> "°CALEONbox"), from the last status screen.
+ */
+devices: { [key: string]: string }, updated: number | null, error: string | null, };

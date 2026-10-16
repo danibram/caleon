@@ -23,14 +23,21 @@ export function Forecast({ room, S }: { room: Room; S: Snapshot | null }) {
   if (t === null || room.vacation) return null
   if (mode === 'off') {
     const nt = modeTemp(room, 'regular', S)
-    if (nt === null) return null
     return (
-      <p className="forecast">
-        En Normal (<b>{fmtC(nt)}°</b>){' '}
-        {t >= nt
-          ? `no calentaría ahora, porque la habitación ya está a ${fmtC(t)}°.`
-          : `empezaría a calentar, porque ahora está a ${fmtC(t)}°.`}
-      </p>
+      <>
+        {nt !== null ? (
+          <p className="forecast">
+            En Normal (<b>{fmtC(nt)}°</b>){' '}
+            {t >= nt
+              ? `no calentaría ahora, porque la habitación ya está a ${fmtC(t)}°.`
+              : `empezaría a calentar, porque ahora está a ${fmtC(t)}°.`}
+          </p>
+        ) : null}
+        <p className="forecast small-note">
+          Apagada sigue protegida contra heladas. Un modo elegido a mano se mantiene hasta el siguiente
+          cambio del horario.
+        </p>
+      </>
     )
   }
   if (sp === null) return null

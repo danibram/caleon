@@ -54,6 +54,9 @@ pub struct Snapshot {
     /// Sensor label ("1", "116.2") -> device room name, from Habitaciones > <room> > Temperatura.
     #[ts(type = "{ [key: string]: string }")]
     pub sensors: Map<String, Value>,
+    /// CAN id -> device name ("116" -> "°CALEONbox"), from the last status screen.
+    #[ts(type = "{ [key: string]: string }")]
+    pub devices: Map<String, Value>,
     #[ts(type = "number | null")]
     pub updated: Option<i64>,
     pub error: Option<String>,
@@ -298,6 +301,10 @@ impl App {
         snap.rooms = rooms;
         snap.system = system;
         snap.status = metrics;
+        snap.devices = status::devices(&pages.concat())
+            .into_iter()
+            .map(|(id, name)| (id, json!(name)))
+            .collect();
         snap.status_lines = pages;
         snap.updated = Some(ts);
         snap.error = None;

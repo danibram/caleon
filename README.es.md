@@ -30,9 +30,11 @@ La web tiene lo mismo que la app oficial (°CALEON 7.0.36) y algo más. Está pe
   WiFi, valores de servicio, bloqueo, valores de fábrica...). Es el mismo menú remoto que pinta la app. El
   °CALEON manda cada pantalla y la web la dibuja.
 - Estado: entradas (sensores 1-Wire, humedad, PWM), salidas (bomba y relés de zona, con la habitación que
-  calienta cada zona) y bomba de circuito.
+  calienta cada zona) y bomba de circuito. Entradas y salidas llevan el nombre del equipo CAN al que
+  pertenecen (°CALEONbox o el propio termostato).
 - Gráficas: temperatura y consigna por habitación, humedad, todos los sensores del equipo y una línea de tiempo
-  de cuándo estuvo encendido cada relé. 6 h, 24 h, 7 d y 30 d.
+  de cuándo estuvo encendido cada relé. 6 h, 24 h, 7 d y 30 d. Los sensores del propio termostato muestran
+  décimas, pero su precisión es de ±1 °C y ±6 % de humedad.
 - Copias: copia de toda la configuración en JSON (manual, o automática cada día solo si algo cambió), descarga,
   subida, comparación con el equipo y restauración de nombres y horarios.
 - Avisos: registro de mensajes del equipo, firmware y funciones activas.
@@ -54,7 +56,7 @@ En Ajustes se elige el modo de conexión:
 - **Directo por la red local** (por defecto): el protocolo UDP de arriba, sin control de acceso.
 - **Con sesión y correo**: la conexión local de uNabto con sesión (`U_CONNECT` + paquetes `DATA` con cifrado
   nulo). Igual que el modo directo pero con control de acceso, así que necesita un correo que esté autorizado en el
-  equipo (Experto › Ajustes › WiFi › Control de acceso). Es un respaldo por si el modo directo dejara de funcionar.
+  equipo (Experto › Ajustes › WiFi › Control de acceso, hasta cinco). Es un respaldo por si el modo directo dejara de funcionar.
 - **SDK oficial de Nabto**: la librería cerrada de Nabto 4.3, solo para x86_64. Solo aparece si el binario se
   compiló con `--features nabto-sdk` (ver abajo).
 

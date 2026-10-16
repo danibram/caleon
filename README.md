@@ -30,9 +30,10 @@ text is in Spanish.
   service values, lock, factory values...). It is the same remote menu the app draws. The °CALEON sends each
   screen and the web renders it.
 - Status: inputs (1-Wire sensors, humidity, PWM), outputs (pump and zone relays, with the room each zone heats)
-  and the circuit pump.
+  and the circuit pump. Inputs and outputs are named after the CAN device they belong to (°CALEONbox or the
+  thermostat itself).
 - Charts: temperature and setpoint per room, humidity, every device sensor and a timeline of when each relay
-  was on. 6 h, 24 h, 7 d and 30 d.
+  was on. 6 h, 24 h, 7 d and 30 d. The thermostat's own sensors read to 0.1 but are rated ±1 °C and ±6 % RH.
 - Backups: the whole configuration as JSON (manual, or daily only when something changed), download, upload,
   comparison with the device and restore of names and schedules.
 - Notices: the device's message log, firmware and enabled features.
@@ -54,7 +55,7 @@ The connection mode is chosen in Settings:
 - **Direct over the local network** (default): the UDP protocol above, with no access control.
 - **Session with e-mail**: uNabto's local connection with a session (`U_CONNECT` plus `DATA` packets with the
   null cipher). Same as direct but with access control, so it needs an e-mail that is authorized on the device
-  (Expert › Settings › WiFi › Access control). It is a fallback in case the direct mode ever stops working.
+  (Expert › Settings › WiFi › Access control, up to five). It is a fallback in case the direct mode ever stops working.
 - **Official Nabto SDK**: the closed Nabto 4.3 library, x86_64 only. Only offered when the binary was built
   with `--features nabto-sdk` (see below).
 

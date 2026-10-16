@@ -93,6 +93,21 @@ pub fn parse(lines: &[String]) -> Vec<Metric> {
     out
 }
 
+/// Devices on the CAN bus as the last status screen lists them ("°CALEONbox(116)" ->
+/// ("116", "°CALEONbox")). Inputs and outputs carry that id as a prefix ("116.1", "116.B").
+pub fn devices(lines: &[String]) -> Vec<(String, String)> {
+    lines
+        .iter()
+        .filter_map(|l| {
+            let l = l.trim().strip_suffix(')')?;
+            let (name, id) = l.rsplit_once('(')?;
+            let name = name.trim();
+            (!name.is_empty() && !id.is_empty() && id.chars().all(|c| c.is_ascii_digit()))
+                .then(|| (id.to_string(), name.to_string()))
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -134,5 +149,28 @@ mod tests {
         assert_eq!(get("Salidas · 116.B Zona B").value, Some(0.0));
         assert_eq!(get("Exterior").value, None);
         assert!(!m.iter().any(|x| x.key.contains("2026")));
+    }
+
+    #[test]
+    fn lists_can_devices() {
+        let lines: Vec<String> = [
+            "Privat CAN",
+            "°CALEON S(31)",
+            "V:33160",
+            "°CALEONbox(116)",
+            " V:33160",
+            "",
+            "Bomba circuito 116.1",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+        assert_eq!(
+            devices(&lines),
+            vec![
+                ("31".to_string(), "°CALEON S".to_string()),
+                ("116".to_string(), "°CALEONbox".to_string())
+            ]
+        );
     }
 }

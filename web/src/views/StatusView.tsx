@@ -1,3 +1,4 @@
+import { deviceLabel } from '../lib/metrics.ts'
 import { Link } from 'react-router'
 import { Banner } from '../components/Banner.tsx'
 import { Icon } from '../components/Icon.tsx'
@@ -139,8 +140,8 @@ export function StatusView() {
             return (
               <div className="kv" key={m.label}>
                 <span>
-                  {sr ? 'Sensor de ' + roomTitle(sr) : 'Sonda ' + m.label}{' '}
-                  <span className="muted">({m.label})</span>
+                  {sr ? 'Sensor de ' + roomTitle(sr) : 'Sonda ' + deviceLabel(m.label, S)}{' '}
+                  <span className="muted">({sr ? deviceLabel(m.label, S) : m.label})</span>
                 </span>
                 <b>{es(m.text)}</b>
               </div>

@@ -255,6 +255,18 @@ async fn prometheus(State(app): State<AppState>) -> Response {
         .into_response()
 }
 
+/// Device an input or output belongs to: "116.B" -> "°CALEONbox"; a bare "1" is the thermostat.
+fn device_of<'a>(snap: &'a crate::app::Snapshot, label: &str) -> &'a str {
+    match label.split_once('.') {
+        Some((id, _)) if id.chars().all(|c| c.is_ascii_digit()) => snap
+            .devices
+            .get(id)
+            .and_then(Value::as_str)
+            .unwrap_or("CAN"),
+        _ => "°CALEON",
+    }
+}
+
 fn prometheus_text(snap: &crate::app::Snapshot) -> String {
     type Labels<'a> = Vec<(&'a str, &'a str)>;
     fn esc(s: &str) -> String {
@@ -325,6 +337,7 @@ fn prometheus_text(snap: &crate::app::Snapshot) -> String {
             let mut l = base.clone();
             l.push(("zone", o["zone"].as_str().unwrap_or("")));
             l.push(("output", o["label"].as_str().unwrap_or("")));
+            l.push(("device", device_of(snap, o["label"].as_str().unwrap_or(""))));
             outputs.push((
                 l,
                 if o["on"].as_bool().unwrap_or(false) {
@@ -376,6 +389,7 @@ fn prometheus_text(snap: &crate::app::Snapshot) -> String {
                         ("group", m.group.as_str()),
                         ("label", m.label.as_str()),
                         ("unit", m.unit.as_str()),
+                        ("device", device_of(snap, &m.label)),
                     ],
                     v,
                 )
