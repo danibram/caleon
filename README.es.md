@@ -307,5 +307,7 @@ reaccionan.
 ## Licencia
 
 MIT, ver [LICENSE](LICENSE). `crates/caleon/unabto_queries.xml` es la definición de la interfaz RPC del °CALEON, la misma que
-lleva la app oficial; sin ella el servidor no puede codificar las consultas. SOREL, °CALEON y Nabto son marcas de
-sus propietarios.
+lleva la app oficial; sin ella el servidor no puede codificar las consultas. Los iconos de habitaciones y
+dispositivos de `static/icons` son el arte de SOREL en la app oficial, conservados para que las habitaciones
+se vean igual que en la app; siguen siendo propiedad de SOREL. SOREL, °CALEON y Nabto son marcas de sus
+propietarios. Los datos de `web/src/mocks` son sintéticos.

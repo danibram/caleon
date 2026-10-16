@@ -303,5 +303,7 @@ the background, so valves and pump show up as soon as they react.
 ## License
 
 MIT, see [LICENSE](LICENSE). `crates/caleon/unabto_queries.xml` is the °CALEON's RPC interface definition, the same one the
-official app carries; without it the server cannot encode the queries. SOREL, °CALEON and Nabto are trademarks
-of their owners.
+official app carries; without it the server cannot encode the queries. The room and device icons in
+`static/icons` are SOREL's artwork from the official app, kept so rooms look the same as in the app; they
+remain SOREL's property. SOREL, °CALEON and Nabto are trademarks of their owners. The data in
+`web/src/mocks` is synthetic.
