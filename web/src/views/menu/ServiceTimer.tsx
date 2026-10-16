@@ -1,7 +1,13 @@
-import { Fragment, useCallback, useMemo, useState } from 'react'
+import { Fragment, useCallback, useState } from 'react'
 import { DAYS } from '../../lib/constants'
 
 type SlotMode = 'on' | 'off'
+
+const HOURS = Array.from({ length: 12 }, (_, i) => (
+  <div className="h" key={i}>
+    {String(i * 2).padStart(2, '0')}
+  </div>
+))
 
 function buildDays(detail: { timer?: { value?: number }[] }) {
   return Array.from({ length: 7 }, (_, day) =>
@@ -25,16 +31,6 @@ export function ServiceTimer({
 }) {
   const [stDay, setStDay] = useState(() => (new Date().getDay() + 6) % 7)
   const [stDays, setStDays] = useState<SlotMode[][]>(() => buildDays(detail))
-
-  const hours = useMemo(
-    () =>
-      Array.from({ length: 12 }, (_, i) => (
-        <div className="h" key={i}>
-          {String(i * 2).padStart(2, '0')}
-        </div>
-      )),
-    [],
-  )
 
   const toggleSlot = useCallback((d: number, i: number) => {
     setStDays((prev) => {
@@ -65,7 +61,7 @@ export function ServiceTimer({
       </p>
       <div className="week" id="sWeek">
         <div />
-        {hours}
+        {HOURS}
         {stDays.map((slots, day) => (
           <Fragment key={day}>
             <div

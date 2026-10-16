@@ -1,4 +1,4 @@
-import { useEffect, useRef, type CSSProperties } from 'react'
+import { useEffect, useEffectEvent, useRef, type CSSProperties } from 'react'
 import type { StateSnapshot } from '../api/types.ts'
 import { drawRoomChart } from './chartData.ts'
 
@@ -23,18 +23,18 @@ export function RoomChart({
 }: RoomChartProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const legendRef = useRef<HTMLDivElement>(null)
-  const stateRef = useRef(state)
-  stateRef.current = state
   // redraw for a new reading from the thermostat, not for optimistic edits of the snapshot
   const updated = state.updated
 
-  useEffect(() => {
+  const draw = useEffectEvent(() => {
     const svg = svgRef.current
     const legend = legendRef.current
-    if (!svg || !legend) return
-    const run = () => void drawRoomChart(svg, legend, hours, stateRef.current, onlyRoom, what)
-    run()
-    const id = window.setInterval(run, 60000)
+    if (svg && legend) void drawRoomChart(svg, legend, hours, state, onlyRoom, what)
+  })
+
+  useEffect(() => {
+    draw()
+    const id = window.setInterval(draw, 60000)
     return () => clearInterval(id)
   }, [hours, onlyRoom, what, updated])
 

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { useAppState } from '../context/AppContext'
+import { useNow } from '../hooks/useNow'
 import { Icon } from './Icon'
 
 function outageSince(S: NonNullable<ReturnType<typeof useAppState>['S']>) {
@@ -13,6 +14,7 @@ function outageSince(S: NonNullable<ReturnType<typeof useAppState>['S']>) {
 
 export function Banner() {
   const { S } = useAppState()
+  const now = useNow()
   if (!S) return null
 
   const parts: ReactNode[] = []
@@ -20,13 +22,13 @@ export function Banner() {
   if (S.read_only) {
     parts.push(
       <div className="ro-banner" key="ro">
-        <Icon name="lock" className="mini" /> Modo solo lectura: puedes mirarlo todo, pero este
+        <Icon name="lock" className="mini" /> Modo solo lectura. Puedes mirarlo todo, pero este
         servidor no cambia el termostato.
       </div>,
     )
   }
 
-  const age = S.updated ? Date.now() / 1000 - S.updated : 1e9
+  const age = S.updated ? now / 1000 - S.updated : 1e9
   if (S.error || age > 180) {
     const since = outageSince(S)
     parts.push(

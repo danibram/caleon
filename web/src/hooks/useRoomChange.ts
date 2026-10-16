@@ -15,15 +15,11 @@ type RoomChangeBody = {
 
 type RoomChangeResponse = RoomState & { state?: Snapshot }
 
-export function useRoomChange(rerender?: () => void) {
-  const { S, setS, api, toast, rereadSoon, navGen, setRoomBusy, refreshView } = useApp()
+export function useRoomChange() {
+  const { S, setS, api, toast, rereadSoon, setRoomBusy } = useApp()
 
   return useCallback(
     async (id: number | string, body: RoomChangeBody) => {
-      const seq = navGen.current
-      const redraw = () => {
-        if (seq === navGen.current) rerender?.()
-      }
       const room = roomById(S, id)
       const before = room && { mode: room.mode, tset: room.tset }
       const numId = Number(id)
@@ -41,7 +37,6 @@ export function useRoomChange(rerender?: () => void) {
         return next
       })
       setRoomBusy(numId, true)
-      redraw()
 
       try {
         const st = await api<RoomChangeResponse>(`/api/rooms/${id}`, { body, any: true })
@@ -73,23 +68,8 @@ export function useRoomChange(rerender?: () => void) {
       }
 
       setRoomBusy(numId, false)
-      if (seq !== navGen.current || numId === SYSTEM) {
-        refreshView()
-        return
-      }
-      redraw()
     },
-    [
-      S,
-      setS,
-      api,
-      toast,
-      rereadSoon,
-      navGen,
-      setRoomBusy,
-      rerender,
-      refreshView,
-    ],
+    [S, setS, api, toast, rereadSoon, setRoomBusy],
   )
 }
 

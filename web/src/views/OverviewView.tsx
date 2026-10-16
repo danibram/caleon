@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
+import { api } from '../api/client.ts'
 import type { HistoryResponse } from '../api/types.ts'
 import { RoomChart } from '../charts/RoomChart.tsx'
 import { historySpan } from '../charts/chartData.ts'
@@ -15,18 +16,7 @@ import { insights, upcomingChangeToday } from '../lib/insights.ts'
 import { hhmm } from '../lib/schedule.ts'
 import { isHeating, modeOf, roomById, roomTitle } from '../lib/rooms.ts'
 
-const histCache: { at: number; data: HistoryResponse | null } = { at: 0, data: null }
-
-async function history6h(api: ReturnType<typeof useApp>['api']) {
-  if (Date.now() - histCache.at < 60000 && histCache.data) return histCache.data
-  try {
-    histCache.data = await api<HistoryResponse>('/api/history?hours=6', { any: true })
-    histCache.at = Date.now()
-  } catch {
-    /* keep prior cache */
-  }
-  return histCache.data
-}
+const history6h = () => api<HistoryResponse>('/api/history?hours=6')
 
 function HomeSummary({ hist }: { hist: HistoryResponse | null }) {
   const { S } = useApp()
@@ -141,29 +131,15 @@ function AllRoomsCard({ mobileOnly = false }: { mobileOnly?: boolean }) {
 }
 
 export function OverviewView() {
-  const { S, api, viewRefreshRef, roomBusy } = useApp()
-  const [hist, setHist] = useState<HistoryResponse | null>(histCache.data)
-  const [, tick] = useState(0)
-  const rerender = useCallback(() => tick((n) => n + 1), [])
-
-  const loadHist = useCallback(async () => {
-    const h = await history6h(api)
-    if (h) setHist(h)
-  }, [api])
-
-  useEffect(() => {
-    viewRefreshRef.current = () => {
-      if (!roomBusy.size) rerender()
-      void loadHist()
-    }
-    return () => {
-      if (viewRefreshRef.current) viewRefreshRef.current = null
-    }
-  }, [viewRefreshRef, roomBusy.size, rerender, loadHist])
-
-  useEffect(() => {
-    void loadHist()
-  }, [loadHist])
+  const { S } = useApp()
+  // the last good history stays on screen while a refetch fails
+  const { data: hist = null } = useQuery({
+    queryKey: ['history', 6],
+    queryFn: history6h,
+    staleTime: 60000,
+    refetchInterval: 60000,
+    retry: false,
+  })
 
   if (!S) return null
 

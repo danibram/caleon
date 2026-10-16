@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { Banner } from '../components/Banner.tsx'
 import { Icon } from '../components/Icon.tsx'
@@ -14,19 +13,7 @@ import {
 } from '../lib/rooms.ts'
 
 export function StatusView() {
-  const { S, viewRefreshRef, roomBusy } = useApp()
-  const [, rerender] = useState(0)
-
-  const render = useCallback(() => {
-    rerender((n) => n + 1)
-  }, [])
-
-  useEffect(() => {
-    viewRefreshRef.current = render
-    return () => {
-      viewRefreshRef.current = null
-    }
-  }, [viewRefreshRef, render, roomBusy.size])
+  const { S } = useApp()
 
   if (!S) return null
 

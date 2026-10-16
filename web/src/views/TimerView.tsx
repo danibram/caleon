@@ -43,7 +43,6 @@ export function TimerView() {
   const [saving, setSaving] = useState(false)
   const [copyOpen, setCopyOpen] = useState(false)
   const [loadErr, setLoadErr] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
   const draftAt = useRef(0)
 
   const painting = useRef(false)
@@ -63,26 +62,28 @@ export function TimerView() {
     setWeekState((w) => (w ? { ...w, days } : w))
   }
 
-  const load = useCallback(async () => {
-    if (!idParam) return
-    setLoading(true)
-    setLoadErr(null)
-    try {
-      const w = await api<TimerWeek>(`/api/rooms/${id}/timer?type=${type}`)
-      setWeek(w)
-      setOriginal(JSON.parse(JSON.stringify(w.days)) as string[][])
-      setDirty(new Set())
-      setBrush((prev) => (prev && w.modes.includes(prev) ? prev : w.modes[1]!))
-    } catch (e) {
-      setLoadErr(e instanceof Error ? e.message : String(e))
-      setWeek(null)
-    }
-    setLoading(false)
-  }, [api, id, idParam, type, setWeek])
-
   useEffect(() => {
-    void load()
-  }, [load])
+    if (!idParam) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const w = await api<TimerWeek>(`/api/rooms/${id}/timer?type=${type}`)
+        if (cancelled) return
+        setWeek(w)
+        setOriginal(JSON.parse(JSON.stringify(w.days)) as string[][])
+        setDirty(new Set())
+        setBrush((prev) => (prev && w.modes.includes(prev) ? prev : w.modes[1]!))
+        setLoadErr(null)
+      } catch (e) {
+        if (cancelled) return
+        setLoadErr(e instanceof Error ? e.message : String(e))
+        setWeek(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [api, id, idParam, type, setWeek])
 
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
@@ -239,7 +240,7 @@ export function TimerView() {
     setDirty(new Set())
   }
 
-  if (loading && !week) {
+  if (!week && !loadErr) {
     return (
       <div className="empty">
         <span className="spin" /> Leyendo horarios del termostato…

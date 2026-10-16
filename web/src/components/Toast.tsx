@@ -1,4 +1,4 @@
-/** Toasts are rendered imperatively from AppContext (same as the legacy UI). */
+/** Toasts are rendered imperatively from AppProvider. */
 export function ToastLayer() {
   return null
 }

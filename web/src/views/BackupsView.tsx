@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Banner } from '../components/Banner.tsx'
@@ -57,7 +58,12 @@ function miniTimer(slots: string[] | undefined) {
 
 export function BackupsView() {
   const { S, api, toast, ask, rereadSoon, reloadState } = useApp()
-  const [list, setList] = useState<BackupEntry[] | null>(null)
+  const backups = useQuery({
+    queryKey: ['backups'],
+    queryFn: () => api<BackupEntry[]>('/api/backups'),
+    retry: false,
+  })
+  const list = backups.isError ? [] : (backups.data ?? null)
   const [open, setOpen] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [result, setResult] = useState<Record<string, ReactNode>>({})
@@ -88,19 +94,21 @@ export function BackupsView() {
     return tick
   }, [api])
 
+  const { refetch } = backups
   const load = useCallback(async () => {
     await reloadState()
-    try {
-      setList(await api<BackupEntry[]>('/api/backups'))
-    } catch (e) {
-      toast(e instanceof Error ? e.message : String(e))
-      setList([])
-    }
-  }, [api, toast, reloadState])
+    await refetch()
+  }, [reloadState, refetch])
 
+  // the list query starts on its own; the snapshot refresh runs alongside it instead of before it
   useEffect(() => {
-    void load()
-  }, [load])
+    void reloadState()
+  }, [reloadState])
+
+  const listError = backups.error
+  useEffect(() => {
+    if (listError) toast(listError.message)
+  }, [listError, toast])
 
   const diffHtml = useCallback(
     (r: RestoreResult, title?: string) => {
@@ -429,8 +437,8 @@ export function BackupsView() {
       </div>
       <p className="muted small" style={{ marginTop: 18 }}>
         Restaurar devuelve los nombres de las habitaciones y sus horarios. Los ajustes del menú
-        Experto solo se comparan: el equipo no deja escribirlos de golpe, se cambian uno a uno desde
-        Experto.
+        Experto solo se comparan, porque el equipo no deja escribirlos de golpe. Se cambian uno a uno
+        desde Experto.
       </p>
     </>
   )

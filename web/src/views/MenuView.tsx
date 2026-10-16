@@ -2,16 +2,19 @@ import {
   Fragment,
   useCallback,
   useEffect,
+  useEffectEvent,
+  useLayoutEffect,
   useRef,
   useState,
   type MutableRefObject,
   type ReactNode,
 } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { useLocation, useNavigate, useNavigationType } from 'react-router'
 import { Banner } from '../components/Banner'
 import { Icon } from '../components/Icon'
 import { RoomIcon } from '../components/RoomIcon'
 import { useAppState } from '../context/AppContext'
+import { useNow } from '../hooks/useNow'
 import { DAYS } from '../lib/constants'
 import { shortErr } from '../lib/format'
 import { roomTitle, zoneRooms } from '../lib/rooms'
@@ -55,10 +58,22 @@ function menuRootFromPath(pathname: string): string {
 }
 
 export default function MenuView() {
+  const location = useLocation()
+  const navType = useNavigationType()
+  const [boot, setBoot] = useState(location.key)
+  // URL updates that only mirror the screen already open keep it; any other navigation into the menu starts over
+  const selfSync =
+    navType === 'REPLACE' && (location.state as { menuSync?: boolean } | null)?.menuSync
+  if (!selfSync && boot !== location.key) setBoot(location.key)
+  return <MenuScreen key={boot} root={menuRootFromPath(location.pathname)} />
+}
+
+function MenuScreen({ root }: { root: string }) {
   const { S, api, toast, rereadSoon, navGen } = useAppState()
   const location = useLocation()
   const navigate = useNavigate()
-  const root = menuRootFromPath(location.pathname)
+  // the device stores no year for a month/day entry; the picker needs one for its value
+  const now = useNow()
 
   const [menuCur, setMenuCur] = useState<MenuResponse | null>(null)
   const [menuTrail, setMenuTrail] = useState<MenuTrailItem[]>(() =>
@@ -79,17 +94,18 @@ export default function MenuView() {
     setMenuBusy(v)
   }
   const pendingEntry = useRef<string | null>(null)
+  // handlers read the newest screen, trail and URL through these without being re-created
   const menuCurRef = useRef(menuCur)
-  menuCurRef.current = menuCur
   const menuTrailRef = useRef(menuTrail)
-  menuTrailRef.current = menuTrail
+  const pathnameRef = useRef(location.pathname)
+  useLayoutEffect(() => {
+    menuCurRef.current = menuCur
+    menuTrailRef.current = menuTrail
+    pathnameRef.current = location.pathname
+  })
   // the root the menu was opened with; it only changes when the menu is opened again
   const rootRef = useRef(root)
-  const pathnameRef = useRef(location.pathname)
-  pathnameRef.current = location.pathname
-  // URL updates that only mirror the screen already open, so the boot effect skips them
-  const selfPath = useRef<string | null>(null)
-  const bootedKey = useRef<string | null>(null)
+  const booted = useRef(false)
   const dirtyRef = useRef(false)
 
   const syncUrl = useCallback(
@@ -103,7 +119,6 @@ export default function MenuView() {
               ? '/p/' + path.map(encodeURIComponent).join('/')
               : '')
       if (pathnameRef.current === h) return
-      selfPath.current = h
       navigate(h, { replace: true, state: { menuSync: true } })
     },
     [navigate],
@@ -119,13 +134,13 @@ export default function MenuView() {
   )
 
   const go = useCallback(
-    async (id: string, action: string) => {
-      const seq0 = navGen.current
+    async function go(id: string, action: string): Promise<void> {
+      const seq0 = navGen()
       try {
         const r = await api<MenuResponse>('/api/menu/action', {
           body: { id, action },
         })
-        if (seq0 !== navGen.current) return
+        if (seq0 !== navGen()) return
         if (
           !(action === '' ||
             /^goto:/.test(action) ||
@@ -173,12 +188,12 @@ export default function MenuView() {
         setWaitingBackup(false)
         setOpenError(null)
       } catch (e) {
-        if (seq0 !== navGen.current) return
+        if (seq0 !== navGen()) return
         const msg = (e as Error).message || ''
         if (/leyendo la configuración/i.test(msg)) {
           setWaitingBackup(true)
           window.setTimeout(() => {
-            if (seq0 === navGen.current) void go(id, action)
+            if (seq0 === navGen()) void go(id, action)
           }, 4000)
           return
         }
@@ -203,10 +218,10 @@ export default function MenuView() {
 
   const openPath = useCallback(
     async (path: string[]) => {
-      const seq0 = navGen.current
+      const seq0 = navGen()
       const tryOpen = async () => {
         const r = await api<MenuResponse>('/api/menu/open', { body: { path } })
-        if (seq0 !== navGen.current) return
+        if (seq0 !== navGen()) return
         const trail: MenuTrailItem[] = [
           { id: 'cal:1', title: 'Experto', entry: 'Experto' },
           ...path.map((e, k) => ({
@@ -222,7 +237,7 @@ export default function MenuView() {
         await tryOpen()
       } catch {
         await new Promise((res) => setTimeout(res, 900))
-        if (seq0 !== navGen.current) return
+        if (seq0 !== navGen()) return
         try {
           await tryOpen()
         } catch {
@@ -243,27 +258,7 @@ export default function MenuView() {
       .catch(() => setMenuValues({}))
   }, [api, menuValues])
 
-  useEffect(() => {
-    // StrictMode runs this twice with the same key; opening the menu twice moves the device cursor
-    if (bootedKey.current === location.key) return
-    bootedKey.current = location.key
-    if (selfPath.current === location.pathname) {
-      selfPath.current = null
-      return
-    }
-    selfPath.current = null
-    rootRef.current = root
-    setMenuBusyFlag(false)
-    pendingEntry.current = null
-    setMenuCur(null)
-    setMenuTrail(
-      root === 'status'
-        ? [{ id: 'cal:1', title: 'Experto', entry: 'Experto' }]
-        : [],
-    )
-    setWaitingBackup(false)
-    setOpenError(null)
-
+  const bootMenu = useEffectEvent(() => {
     if (root.startsWith('p/')) {
       const path = root
         .slice(2)
@@ -273,7 +268,14 @@ export default function MenuView() {
     } else {
       void go('', root === 'status' ? 'status' : '')
     }
-  }, [location.key, location.pathname, root, go, openPath])
+  })
+
+  useEffect(() => {
+    // StrictMode mounts twice; opening the menu twice moves the device cursor
+    if (booted.current) return
+    booted.current = true
+    bootMenu()
+  }, [])
 
   useEffect(() => {
     const onInput = (ev: Event) => {
@@ -427,7 +429,7 @@ export default function MenuView() {
             raw === 'Habitación' &&
             /^Zona [A-Z]$/.test(base[base.length - 1] || '')
           ) {
-            const zz = zoneRooms(S)[base[base.length - 1].slice(-1)]
+            const zz = zr[base[base.length - 1].slice(-1)]
             val = zz ? roomTitle(zz) : 'Ninguna'
           }
           const zone = /^Zona ([A-Z])$/.exec(raw)
@@ -438,8 +440,7 @@ export default function MenuView() {
                 ? 'sin habitación'
                 : ''
           const help = MENU_HELP[raw]
-          const zoneRoom =
-            /^Zona ([A-Z])$/.test(raw) && zoneRooms(S)[raw.slice(-1)]
+          const zoneRoom = zone && zr[zone[1]]
           const mi =
             MENU_ICON[raw] || (/^Zona [A-Z]$/.test(raw) ? 'zone' : 'sliders')
           return (
@@ -745,7 +746,7 @@ export default function MenuView() {
     )
   } else if (t === 'system date' || t === 'month day') {
     const p = (n: number) => String(n).padStart(2, '0')
-    const year = t === 'month day' ? new Date().getFullYear() : Number(d.year)
+    const year = t === 'month day' ? new Date(now).getFullYear() : Number(d.year)
     const has = Number(d.day) > 0 && Number(d.month) > 0
     body = (
       <DateTimeForm

@@ -2,6 +2,8 @@ import { Link, useLocation } from 'react-router'
 import { Icon } from './Icon.tsx'
 import { NAV, TABS } from '../lib/icons.ts'
 
+const TAB_ITEMS = NAV.filter(([h]) => TABS.includes(h))
+
 function isActive(path: string, current: string, inTabbar: boolean) {
   const inMore =
     inTabbar &&
@@ -15,11 +17,10 @@ function isActive(path: string, current: string, inTabbar: boolean) {
 
 export function TabBar() {
   const { pathname } = useLocation()
-  const items = NAV.filter(([h]) => TABS.includes(h))
 
   return (
     <nav className="tabbar" aria-label="Secciones">
-      {items.map(([h, l, i]) => (
+      {TAB_ITEMS.map(([h, l, i]) => (
         <Link
           key={h}
           to={h}

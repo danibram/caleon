@@ -1,5 +1,5 @@
 import { esc } from '../lib/esc.ts'
-import { iconHtml } from '../components/Icon.tsx'
+import { iconHtml } from '../lib/iconPaths.ts'
 
 export interface ChartSeries {
   name: string
@@ -293,7 +293,7 @@ export function onIntervals(
   return out
 }
 
-/** 5-sample median, then a 0,15° dead band: the sensor's 0,1° flicker never draws as steps. */
+/** 5-sample median, then a 0,15° dead band, so the sensor's 0,1° flicker never draws as steps. */
 export function deblip(
   pts: [number, number | null][],
   band = 0.15,

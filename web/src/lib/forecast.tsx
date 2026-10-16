@@ -1,17 +1,16 @@
-import type { ReactNode } from 'react'
 import type { Room, Snapshot } from '../context/AppContext.tsx'
 import { MODE_LABEL } from './constants.ts'
 import { fmtC, num } from './format.ts'
 import { isHeating, modeOf, modeTemp } from './rooms.ts'
 
-export function unknownModesNote(r: Room, S: Snapshot | null): ReactNode {
+export function UnknownModesNote({ room: r, S }: { room: Room; S: Snapshot | null }) {
   const missing = (['eco', 'turbo'] as const)
     .filter((m) => modeTemp(r, m, S) === null)
     .map((m) => MODE_LABEL[m])
   if (!missing.length) return null
   return (
     <p className="forecast small-note">
-      {missing.join(' y ')}: su temperatura aparecerá cuando la habitación pase un rato en ese modo. El
+      La temperatura de {missing.join(' y ')} aparecerá cuando la habitación pase un rato en ese modo. El
       termostato no la comunica de otra forma.
     </p>
   )
@@ -29,8 +28,8 @@ export function Forecast({ room, S }: { room: Room; S: Snapshot | null }) {
       <p className="forecast">
         En Normal (<b>{fmtC(nt)}°</b>){' '}
         {t >= nt
-          ? `no calentaría ahora: la habitación ya está a ${fmtC(t)}°.`
-          : `empezaría a calentar: ahora está a ${fmtC(t)}°.`}
+          ? `no calentaría ahora, porque la habitación ya está a ${fmtC(t)}°.`
+          : `empezaría a calentar, porque ahora está a ${fmtC(t)}°.`}
       </p>
     )
   }
@@ -45,7 +44,7 @@ export function Forecast({ room, S }: { room: Room; S: Snapshot | null }) {
   if (t >= sp) {
     return (
       <p className="forecast">
-        No calienta: ya está a {fmtC(t)}°, por encima de su objetivo de <b>{fmtC(sp)}°</b>.
+        No calienta porque ya está a {fmtC(t)}°, por encima de su objetivo de <b>{fmtC(sp)}°</b>.
       </p>
     )
   }

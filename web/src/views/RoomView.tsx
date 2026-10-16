@@ -1,72 +1,27 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { RangeSeg } from '../charts/RangeSeg.tsx'
 import { RoomChart } from '../charts/RoomChart.tsx'
 import { bestRange } from '../charts/chartData.ts'
+import { ActionRow, type ActionItem } from '../components/ActionRow.tsx'
 import { Banner } from '../components/Banner.tsx'
 import { Band } from '../components/Band.tsx'
 import { Gauge } from '../components/Gauge.tsx'
-import { Icon, type IconName } from '../components/Icon.tsx'
+import { Icon } from '../components/Icon.tsx'
 import { RoomControls } from '../components/RoomControls.tsx'
 import { RoomIcon } from '../components/RoomIcon.tsx'
 import { useApp } from '../context/AppContext.tsx'
 import { useRoomChange, useRoomControlGuard } from '../hooks/useRoomChange.ts'
 import { SYSTEM } from '../lib/constants.ts'
 import { es, fmtC, num } from '../lib/format.ts'
-import { Forecast, unknownModesNote } from '../lib/forecast.tsx'
+import { Forecast, UnknownModesNote } from '../lib/forecast.tsx'
 import { modeOf, roomById, roomTitle, stateLine } from '../lib/rooms.ts'
 import { vacationPresets } from '../lib/schedule.ts'
 
-type ActionItem = {
-  tag: 'a' | 'button'
-  href?: string
-  id?: string
-  icon: IconName
-  label: string
-  sub?: string
-  onClick?: () => void
-}
-
-function ActionRow({ items }: { items: ActionItem[] }) {
-  return (
-    <div className="actrow stagger">
-      {items.map(({ tag, href, id, icon, label, sub, onClick }, k) => {
-        const inner = (
-          <>
-            <span className="ic">
-              <Icon name={icon as 'clock'} />
-            </span>
-            <span className="lbl">
-              {label}
-              {sub ? <span className="sub">{sub}</span> : null}
-            </span>
-            <Icon name="chevron" className="chev" />
-          </>
-        )
-        const style = { ['--k' as string]: k }
-        if (tag === 'a' && href) {
-          return (
-            <Link key={href} to={href.replace(/^#/, '')} style={style}>
-              {inner}
-            </Link>
-          )
-        }
-        return (
-          <button key={id || label} type="button" id={id} style={style} onClick={onClick}>
-            {inner}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 export function RoomView() {
   const { id: idParam } = useParams()
-  const { S, ask, viewRefreshRef, roomBusy } = useApp()
-  const [, tick] = useState(0)
-  const rerender = useCallback(() => tick((n) => n + 1), [])
-  const roomChange = useRoomChange(rerender)
+  const { S, ask } = useApp()
+  const roomChange = useRoomChange()
   const { staleData, roomBusy: busySet, blockedToast } = useRoomControlGuard()
 
   const id = idParam ?? ''
@@ -75,15 +30,6 @@ export function RoomView() {
   const [roomHours, setRoomHours] = useState(() =>
     S ? bestRange([6, 24, 168, 720], 24, S) : 24,
   )
-
-  useEffect(() => {
-    viewRefreshRef.current = () => {
-      if (!roomBusy.size && !document.querySelector('dialog[open], .sheet.open')) rerender()
-    }
-    return () => {
-      viewRefreshRef.current = null
-    }
-  }, [viewRefreshRef, roomBusy.size, rerender])
 
   if (!S) return null
 
@@ -245,9 +191,9 @@ export function RoomView() {
               </div>
               <div className="room-modes off-modes">
                 <div className="rm-label">Elige un modo para encenderla</div>
-                <RoomControls room={r} S={S} compact="modes" onUpdated={rerender} />
+                <RoomControls room={r} S={S} compact="modes" />
                 <Forecast room={r} S={S} />
-                {unknownModesNote(r, S)}
+                <UnknownModesNote room={r} S={S} />
               </div>
               <Band room={r} S={S} big />
             </>
@@ -301,7 +247,7 @@ export function RoomView() {
           {off && !isSys ? null : (
             <div className="room-modes">
               <div className="rm-label">{isSys ? 'Elige un modo para toda la casa' : 'Modo'}</div>
-              <RoomControls room={r} S={S} compact="modes" onUpdated={rerender} />
+              <RoomControls room={r} S={S} compact="modes" />
             </div>
           )}
         </div>

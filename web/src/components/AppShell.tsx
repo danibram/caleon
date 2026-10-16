@@ -10,7 +10,7 @@ const depthOf = (p: string) =>
   p.startsWith('/timer') ? 2 : p.startsWith('/room') ? 1 : 0
 
 export function AppShell() {
-  const { S, staleData, bumpNav } = useAppState()
+  const { staleData, bumpNav } = useAppState()
   const location = useLocation()
   const navType = useNavigationType()
   const lastPath = useRef<string | null>(null)
@@ -24,7 +24,7 @@ export function AppShell() {
     if (!document.startViewTransition) document.documentElement.classList.add('no-vt')
   }, [])
 
-  // layout effect: it must run before the new view's effects start their requests
+  // a layout effect, because it must run before the new view's effects start their requests
   useLayoutEffect(() => {
     const path = location.pathname
     if (lastPath.current === path) return
@@ -59,13 +59,6 @@ export function AppShell() {
     window.addEventListener('resize', setHdr)
     return () => window.removeEventListener('resize', setHdr)
   }, [])
-
-  useEffect(() => {
-    if (S) {
-      const age = S.updated ? Date.now() / 1000 - S.updated : 1e9
-      document.getElementById('view')?.classList.toggle('stale-data', !!(S.error || age > 180))
-    }
-  }, [S])
 
   return (
     <>

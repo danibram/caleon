@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
 import { useAppState } from '../context/AppContext.tsx'
+import { useNow } from '../hooks/useNow.ts'
 
 function ago(secs: number) {
   if (secs < 90) return 'ahora mismo'
@@ -9,12 +9,7 @@ function ago(secs: number) {
 
 export function MetaHeader() {
   const { S } = useAppState()
-  const [, tick] = useState(0)
-
-  useEffect(() => {
-    const id = setInterval(() => tick((n) => n + 1), 30000)
-    return () => clearInterval(id)
-  }, [])
+  const now = useNow()
 
   if (!S) {
     return (
@@ -25,7 +20,7 @@ export function MetaHeader() {
     )
   }
 
-  const age = S.updated ? Date.now() / 1000 - S.updated : 1e9
+  const age = S.updated ? now / 1000 - S.updated : 1e9
   const cls = S.error || age > 300 ? 'err' : age > 120 ? 'stale' : ''
   const t = S.updated
     ? new Date(S.updated * 1000).toLocaleTimeString('es-ES', {

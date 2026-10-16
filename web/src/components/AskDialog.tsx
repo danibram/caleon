@@ -89,7 +89,3 @@ export const AskDialog = forwardRef<
     </dialog>
   )
 })
-
-export function showAskDialog(dlg: HTMLDialogElement | null) {
-  requestAnimationFrame(() => dlg?.showModal())
-}

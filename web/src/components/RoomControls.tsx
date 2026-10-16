@@ -10,11 +10,10 @@ interface RoomControlsProps {
   room: Room
   S: Snapshot | null
   compact?: Compact
-  onUpdated?: () => void
 }
 
-export function RoomControls({ room, S, compact = false, onUpdated }: RoomControlsProps) {
-  const roomChange = useRoomChange(onUpdated)
+export function RoomControls({ room, S, compact = false }: RoomControlsProps) {
+  const roomChange = useRoomChange()
   const { staleData, roomBusy, blockedToast } = useRoomControlGuard()
   const mode = modeOf(room)
   const canAdjust = room.id !== SYSTEM && mode !== 'off' && !room.vacation
