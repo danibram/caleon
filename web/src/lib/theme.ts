@@ -1,4 +1,9 @@
-export type ThemeChoice = 'system' | 'light' | 'dark'
+export const THEMES = ['system', 'light', 'dark'] as const
+
+export type ThemeChoice = (typeof THEMES)[number]
+
+const isThemeChoice = (v: unknown): v is ThemeChoice =>
+  typeof v === 'string' && THEMES.some((t) => t === v)
 
 export function applyTheme(t?: ThemeChoice): ThemeChoice {
   try {
@@ -8,7 +13,8 @@ export function applyTheme(t?: ThemeChoice): ThemeChoice {
   }
   let v: ThemeChoice = 'system'
   try {
-    v = (localStorage.getItem('caleon.theme') as ThemeChoice) || 'system'
+    const stored: unknown = localStorage.getItem('caleon.theme')
+    if (isThemeChoice(stored)) v = stored
   } catch {
     /* ignore */
   }

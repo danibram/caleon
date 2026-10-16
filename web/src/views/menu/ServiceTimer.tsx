@@ -9,36 +9,37 @@ const HOURS = Array.from({ length: 12 }, (_, i) => (
   </div>
 ))
 
-function buildDays(detail: { timer?: { value?: number }[] }) {
+/** Three 16-bit words per day, two bits per half hour. */
+function buildDays(words: number[]) {
   return Array.from({ length: 7 }, (_, day) =>
-    Array.from({ length: 48 }, (_, s) => {
-      const w = (detail.timer || [])[day * 3 + Math.floor(s / 16)]?.value || 0
-      return ((w >>> ((s % 16) * 2)) & 3 ? 'on' : 'off') as SlotMode
+    Array.from({ length: 48 }, (_, s): SlotMode => {
+      const w = words[day * 3 + Math.floor(s / 16)] || 0
+      return (w >>> ((s % 16) * 2)) & 3 ? 'on' : 'off'
     }),
   )
 }
 
 export function ServiceTimer({
-  detail,
+  words,
   onSetDay,
   onCopy,
   menuBusy,
 }: {
-  detail: { timer?: { value?: number }[] }
-  onSetDay: (day: number, slots: SlotMode[]) => void
-  onCopy: (day: number, mask: number) => void
+  words: number[]
+  onSetDay: (args: { day: number; slots: SlotMode[] }) => void
+  onCopy: (args: { day: number; mask: number }) => void
   menuBusy: boolean
 }) {
   const [stDay, setStDay] = useState(() => (new Date().getDay() + 6) % 7)
-  const [stDays, setStDays] = useState<SlotMode[][]>(() => buildDays(detail))
+  const [stDays, setStDays] = useState<SlotMode[][]>(() => buildDays(words))
 
-  const toggleSlot = useCallback((d: number, i: number) => {
+  const toggleSlot = useCallback(({ day, slot }: { day: number; slot: number }) => {
     setStDays((prev) => {
       const next = prev.map((row) => [...row])
-      next[d][i] = next[d][i] === 'on' ? 'off' : 'on'
+      next[day][slot] = next[day][slot] === 'on' ? 'off' : 'on'
       return next
     })
-    setStDay(d)
+    setStDay(day)
   }, [])
 
   const handleCopy = useCallback(
@@ -49,7 +50,7 @@ export function ServiceTimer({
         )
       )
         return
-      onCopy(stDay, mask)
+      onCopy({ day: stDay, mask })
     },
     [onCopy, stDay],
   )
@@ -85,9 +86,9 @@ export function ServiceTimer({
                 className={`s slot-${m}`}
                 data-d={day}
                 data-i={i}
-                onClick={() => toggleSlot(day, i)}
+                onClick={() => toggleSlot({ day, slot: i })}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') toggleSlot(day, i)
+                  if (e.key === 'Enter' || e.key === ' ') toggleSlot({ day, slot: i })
                 }}
                 role="button"
                 tabIndex={0}
@@ -102,7 +103,7 @@ export function ServiceTimer({
           className="btn primary"
           id="sSave"
           disabled={menuBusy}
-          onClick={() => onSetDay(stDay, stDays[stDay])}
+          onClick={() => onSetDay({ day: stDay, slots: stDays[stDay] })}
         >
           Guardar {DAYS[stDay].toLowerCase()}
         </button>

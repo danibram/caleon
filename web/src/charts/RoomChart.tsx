@@ -29,7 +29,7 @@ export function RoomChart({
   const draw = useEffectEvent(() => {
     const svg = svgRef.current
     const legend = legendRef.current
-    if (svg && legend) void drawRoomChart(svg, legend, hours, state, onlyRoom, what)
+    if (svg && legend) void drawRoomChart({ svg, legend, hours, state, onlyRoom, what })
   })
 
   useEffect(() => {

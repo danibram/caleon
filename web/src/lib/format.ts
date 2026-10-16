@@ -13,6 +13,8 @@ export const shortErr = (m: string | null | undefined) =>
     .replace(/\s+/g, ' ')
     .slice(0, 110)
 
+export const errorMessage = (e: unknown) => (e instanceof Error ? e.message : String(e))
+
 export function fmtC(v: number | null | undefined): string {
   return v === null || v === undefined ? '--' : v.toFixed(1).replace('.', ',')
 }

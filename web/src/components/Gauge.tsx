@@ -9,6 +9,12 @@ const START = 135
 const SWEEP = 270
 const R = 84
 
+const MODE_COLOR: Record<string, string> = {
+  turbo: 'var(--turbo)',
+  eco: 'var(--eco)',
+  regular: 'var(--normal)',
+}
+
 function frac(v: number) {
   return (Math.min(MAX, Math.max(MIN, v)) - MIN) / (MAX - MIN)
 }
@@ -25,10 +31,7 @@ export function Gauge({ room }: { room: Room }) {
   const [x0, y0] = pt(START)
   const [x1, y1] = pt(START + SWEEP)
   const full = `M${x0.toFixed(2)} ${y0.toFixed(2)} A${R} ${R} 0 1 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`
-  const color =
-    ({ turbo: 'var(--turbo)', eco: 'var(--eco)', regular: 'var(--normal)' } as Record<string, string>)[
-      mode
-    ] || 'var(--accent)'
+  const color = MODE_COLOR[mode] || 'var(--accent)'
   const pct = off ? 0 : Math.round(frac(sp) * 1000) / 10
   const sA = off ? 0 : frac(sp) * SWEEP
   const tA = t === null ? 0 : frac(t) * SWEEP

@@ -4,7 +4,6 @@ export type { IconName }
 
 export function Icon({ name, className = '' }: { name: IconName; className?: string }) {
   const path = IC[name]
-  if (!path) return null
   return (
     <svg
       className={className}

@@ -2,7 +2,7 @@ import { MODES, SYSTEM } from '../lib/constants.ts'
 import type { Room, Snapshot } from '../context/AppContext.tsx'
 import { es, fmtC } from '../lib/format.ts'
 import { modeOf, modeTemp } from '../lib/rooms.ts'
-import { useRoomChange, useRoomControlGuard } from '../hooks/useRoomChange.ts'
+import { useRoomChange, useRoomControlGuard, type RoomChangeBody } from '../hooks/useRoomChange.ts'
 
 type Compact = boolean | 'modes'
 
@@ -20,7 +20,7 @@ export function RoomControls({ room, S, compact = false }: RoomControlsProps) {
   const idx = MODES.findIndex(([k]) => k === mode)
   const busy = roomBusy.has(Number(room.id))
 
-  const act = (body: { tdelta?: number; mode?: string }) => {
+  const act = (body: RoomChangeBody) => {
     if (staleData) {
       blockedToast()
       return

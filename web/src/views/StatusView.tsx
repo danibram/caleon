@@ -2,7 +2,7 @@ import { Link } from 'react-router'
 import { Banner } from '../components/Banner.tsx'
 import { Icon } from '../components/Icon.tsx'
 import { RoomIcon } from '../components/RoomIcon.tsx'
-import { useApp } from '../context/AppContext.tsx'
+import { useApp, type StatusMetric } from '../context/AppContext.tsx'
 import { es, fmtC, num } from '../lib/format.ts'
 import {
   isHeating,
@@ -20,7 +20,7 @@ export function StatusView() {
   const st = S.status || []
   const find = (group: string, label: string) =>
     st.find((m) => m.group.startsWith(group) && m.label === label)
-  const onoff = (m: (typeof st)[0] | undefined) => m && m.value === 1
+  const onoff = (m: StatusMetric | undefined) => m && m.value === 1
   const zr = zoneRooms(S)
 
   const rooms = S.rooms
@@ -42,7 +42,7 @@ export function StatusView() {
   const probes = st.filter((m) => m.group === 'Entradas' && /^\d+\.\d+$/.test(m.label))
   const outdoor = st.find((m) => m.label === 'Exterior')
   const freeZones = st.filter(
-    (m) => m.group === 'Salidas' && /Zona [A-Z]$/.test(m.label) && !zr[m.label.slice(-1)!],
+    (m) => m.group === 'Salidas' && /Zona [A-Z]$/.test(m.label) && !zr[m.label.slice(-1)],
   )
   const heatingRooms = rooms.filter((x) => x.zones.some((z) => onoff(z.m)))
   const anyHeat = heatingRooms.length > 0

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { Link, Outlet, useLocation, useNavigationType } from 'react-router'
 import { useAppState } from '../context/AppContext.tsx'
+import { hasMenuSync } from '../lib/menuSync.ts'
 import { applyTheme } from '../lib/theme.ts'
 import { MetaHeader } from './MetaHeader.tsx'
 import { TabBar, TopNav } from './TabBar.tsx'
@@ -28,8 +29,7 @@ export function AppShell() {
   useLayoutEffect(() => {
     const path = location.pathname
     if (lastPath.current === path) return
-    const menuSync =
-      navType === 'REPLACE' && (location.state as { menuSync?: boolean } | null)?.menuSync
+    const menuSync = navType === 'REPLACE' && hasMenuSync(location.state)
     if (lastPath.current !== null) scrollMem.current[lastPath.current] = lastScrollY.current
     const d0 = lastPath.current === null ? 0 : depthOf(lastPath.current)
     const d1 = depthOf(path)

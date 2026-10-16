@@ -14,7 +14,7 @@ export const AskDialog = forwardRef<
   const closeAsk = (ok: boolean) => {
     if (!askUi) return
     if (!ok) onResolve(null)
-    else onResolve(askUi.input !== false ? askUi.inputValue : true)
+    else onResolve(askUi.input === false ? true : askUi.inputValue)
     setAskUi(null)
   }
 
@@ -30,7 +30,8 @@ export const AskDialog = forwardRef<
         method="dialog"
         onSubmit={(e) => {
           e.preventDefault()
-          const dlg = e.currentTarget.closest('dialog') as HTMLDialogElement
+          const dlg = e.currentTarget.closest('dialog')
+          if (!dlg) return
           dlg.returnValue = 'ok'
           dlg.close()
         }}
@@ -39,7 +40,7 @@ export const AskDialog = forwardRef<
           <>
             <div style={{ fontWeight: 600 }}>{askUi.title}</div>
             {askUi.text ? <div className="muted small">{askUi.text}</div> : null}
-            {askUi.input !== false ? (
+            {askUi.input === false ? null : (
               <>
                 <label htmlFor="dlgInput">{askUi.label}</label>
                 <input
@@ -66,7 +67,7 @@ export const AskDialog = forwardRef<
                   </div>
                 ) : null}
               </>
-            ) : null}
+            )}
             <div className="actions" style={{ justifyContent: 'flex-end' }}>
               <button
                 type="button"

@@ -13,7 +13,7 @@ export function RoomIcon({
   return (
     <span
       className={`ricon ${className} ${size === 'lg' ? 'lg' : ''}`}
-      style={{ ['--src' as string]: `url('/icons/${type}.svg?mask=1')` }}
+      style={{ '--src': `url('/icons/${type}.svg?mask=1')` }}
       aria-hidden
     >
       <i />

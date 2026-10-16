@@ -1,32 +1,33 @@
 import { createContext, useContext } from 'react'
 
+import type { api } from '../api/client.ts'
 import type { Snapshot } from '../api/types.ts'
 
 export type { Room, RoomOutput, Snapshot, StatusMetric } from '../api/types.ts'
 
-export type ApiOpts = {
-  method?: string
-  body?: unknown
-  any?: boolean
-}
-
-export type AskOptions = {
+type AskBase = {
   title: string
   text?: string
-  value?: string
-  input?: boolean
   ok?: string
-  type?: string
-  presets?: [string, string][]
-  label?: string
-  max?: number
 }
+
+/** A confirmation resolves to true or null; a prompt resolves to the typed text or null. */
+export type AskOptions =
+  | (AskBase & { input: false })
+  | (AskBase & {
+      input?: true
+      value?: string
+      type?: string
+      presets?: [string, string][]
+      label?: string
+      max?: number
+    })
 
 export type AppContextValue = {
   S: Snapshot | null
   setS: (value: Snapshot | null | ((prev: Snapshot | null) => Snapshot | null)) => void
   reloadState: () => Promise<unknown>
-  api: <T = unknown>(path: string, opts?: ApiOpts) => Promise<T>
+  api: typeof api
   toast: (msg: string, ms?: number) => void
   ask: (opts: AskOptions) => Promise<string | boolean | null>
   rereadSoon: () => void

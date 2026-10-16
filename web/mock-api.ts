@@ -9,12 +9,37 @@ const ICONS = join(import.meta.dirname, '../static/icons')
 
 const fixture = (name: string): unknown => JSON.parse(readFileSync(join(MOCKS, `${name}.json`), 'utf8'))
 
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v)
+
+function fixtureRecord(name: string): Record<string, unknown> {
+  const v = fixture(name)
+  if (!isRecord(v)) throw new Error(`${name}.json: expected an object`)
+  return v
+}
+
 type Row = [number, ...unknown[]]
+
+const isRow = (v: unknown): v is Row => Array.isArray(v) && typeof v[0] === 'number'
+
+/** key -> [timestamp, ...values] rows, as /api/history and /api/metrics serve them */
+function fixtureSeries(name: string): Record<string, Row[]> {
+  const out: Record<string, Row[]> = {}
+  for (const [k, list] of Object.entries(fixtureRecord(name))) {
+    if (!Array.isArray(list) || !list.every(isRow)) throw new Error(`${name}.json: ${k} is not a list of rows`)
+    out[k] = list
+  }
+  return out
+}
 
 /** Moves every timestamp forward so the captured data reads as current. */
 function shifted() {
-  const state = fixture('state') as Record<string, unknown> & { updated: number; history_since: number | null }
-  const shift = Math.floor(Date.now() / 1000) - state.updated
+  const state = fixtureRecord('state')
+  const { updated, history_since } = state
+  if (typeof updated !== 'number') throw new Error('state.json: updated must be a number')
+  if (typeof history_since !== 'number' && history_since !== null)
+    throw new Error('state.json: history_since must be a number or null')
+  const shift = Math.floor(Date.now() / 1000) - updated
   const rows = (series: Record<string, Row[]>) =>
     Object.fromEntries(
       Object.entries(series).map(([k, list]) => [k, list.map(([t, ...rest]) => [t + shift, ...rest])]),
@@ -22,11 +47,11 @@ function shifted() {
   return {
     state: {
       ...state,
-      updated: state.updated + shift,
-      history_since: state.history_since === null ? null : state.history_since + shift,
+      updated: updated + shift,
+      history_since: history_since === null ? null : history_since + shift,
     },
-    history: rows(fixture('history') as Record<string, Row[]>),
-    metrics: rows(fixture('metrics') as Record<string, Row[]>),
+    history: rows(fixtureSeries('history')),
+    metrics: rows(fixtureSeries('metrics')),
   }
 }
 
@@ -56,7 +81,7 @@ function route(method: string, path: string): [number, unknown] {
     if (path === '/api/settings') return [200, fixture('settings')]
     if (path === '/api/backups') return [200, fixture('backups')]
     if (path === '/api/menu/values') return [200, fixture('menu-values')]
-    if (path === '/api/menu/detail') return [200, (fixture('menu-root') as { detail: unknown }).detail]
+    if (path === '/api/menu/detail') return [200, fixtureRecord('menu-root').detail]
     if (/^\/api\/rooms\/\d+\/timer$/.test(path)) return [200, fixture('timer')]
   }
   if (method === 'POST') {

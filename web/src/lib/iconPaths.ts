@@ -1,4 +1,4 @@
-export const IC: Record<string, string> = {
+export const IC = {
   home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
   pulse: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
   chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
@@ -30,13 +30,12 @@ export const IC: Record<string, string> = {
   warn: '<path d="M12 3 2 20h20zM12 10v4M12 17h0"/>',
   wifi: '<path d="M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h0"/>',
   zone: '<rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/>',
-}
+} satisfies Record<string, string>
 
 export type IconName = keyof typeof IC
 
 /** Same drawing as <Icon>, for markup built outside React (chart legends). */
 export function iconHtml(name: IconName, cls = ''): string {
   const path = IC[name]
-  if (!path) return ''
   return `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`
 }

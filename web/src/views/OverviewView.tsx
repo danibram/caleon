@@ -85,8 +85,8 @@ function HomeSummary({ hist }: { hist: HistoryResponse | null }) {
         ) : null}
         {upcoming ? (
           <div>
-            <span>{hhmm(upcoming.nc!.slot!)}</span>
-            {roomTitle(upcoming.r)} a {(MODE_LABEL[upcoming.nc!.mode!] || '').toLowerCase()}
+            <span>{hhmm(upcoming.nc.slot)}</span>
+            {roomTitle(upcoming.r)} a {(MODE_LABEL[upcoming.nc.mode] || '').toLowerCase()}
           </div>
         ) : (
           <div>

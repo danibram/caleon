@@ -1,5 +1,5 @@
 import { api } from '../api/client.ts'
-import type { HistoryResponse, MetricsResponse, StateSnapshot } from '../api/types.ts'
+import type { HistoryResponse, MetricPoint, MetricsResponse, StateSnapshot } from '../api/types.ts'
 import { modeOf, roomTitle } from '../lib/rooms.ts'
 import { deblip, lineChart, onIntervals, type ChartSeries } from './lineChart.ts'
 
@@ -25,22 +25,38 @@ export function historySpan(state: StateSnapshot): number {
   return state.history_since ? Date.now() / 1000 - state.history_since : 0
 }
 
-export function bestRange(ranges: number[], want: number, state: StateSnapshot): number {
+/** The longest of `ranges` up to `want` that the stored history can mostly fill. */
+export function bestRange({
+  ranges,
+  want,
+  state,
+}: {
+  ranges: number[]
+  want: number
+  state: StateSnapshot
+}): number {
   const span = historySpan(state)
   return (
     [...ranges].reverse().find((h) => h <= want && (h === ranges[0] || span >= h * 3600 * 0.3)) ||
-    ranges[0]!
+    ranges[0]
   )
 }
 
-export async function drawRoomChart(
-  svg: SVGSVGElement,
-  legend: HTMLElement,
-  hours: number,
-  state: StateSnapshot,
-  onlyRoom: string | null,
-  what: 'temp' | 'hum' = 'temp',
-): Promise<void> {
+export async function drawRoomChart({
+  svg,
+  legend,
+  hours,
+  state,
+  onlyRoom,
+  what = 'temp',
+}: {
+  svg: SVGSVGElement
+  legend: HTMLElement
+  hours: number
+  state: StateSnapshot
+  onlyRoom: string | null
+  what?: 'temp' | 'hum'
+}): Promise<void> {
   const tok = (chartTokens.get(svg) || 0) + 1
   chartTokens.set(svg, tok)
   let data: HistoryResponse
@@ -57,7 +73,7 @@ export async function drawRoomChart(
     if (onlyRoom !== null && room !== onlyRoom) return
     const r = state.rooms.find((r) => String(r.id) === room),
       name = r ? roomTitle(r) : 'Sala ' + room,
-      c = pal[Number(room) % pal.length]!
+      c = pal[Number(room) % pal.length]
     if (what === 'hum') {
       if (rows.some((x) => x[2] !== null))
         series.push({
@@ -65,7 +81,7 @@ export async function drawRoomChart(
           color: c,
           step: true,
           points: deblip(
-            rows.map((x) => [x[0], x[2]] as [number, number | null]),
+            rows.map((x): MetricPoint => [x[0], x[2]]),
             0.6,
           ),
         })
@@ -75,7 +91,7 @@ export async function drawRoomChart(
       name,
       color: c,
       step: true,
-      points: deblip(rows.map((x) => [x[0], x[1]] as [number, number | null])),
+      points: deblip(rows.map((x): MetricPoint => [x[0], x[1]])),
     }
     series.push(main)
     if (r && modeOf(r) !== 'off') {
@@ -85,7 +101,7 @@ export async function drawRoomChart(
         dashed: true,
         step: true,
         noLegend: onlyRoom === null,
-        points: rows.map((x) => [x[0], x[3]] as [number, number | null]),
+        points: rows.map((x): MetricPoint => [x[0], x[3]]),
       }
       if (onlyRoom === null) {
         main.twins = [tset]
@@ -106,8 +122,5 @@ export async function drawRoomChart(
     }
     if (chartTokens.get(svg) !== tok) return
   }
-  lineChart(svg, legend, series, hours, {
-    yUnit: what === 'hum' ? '%' : '°',
-    bands,
-  })
+  lineChart({ svg, legend, series, hours, yUnit: what === 'hum' ? '%' : '°', bands })
 }

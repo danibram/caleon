@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
-import { useAppState } from '../context/AppContext'
+import { useAppState, type Snapshot } from '../context/AppContext'
 import { useNow } from '../hooks/useNow'
 import { Icon } from './Icon'
 
-function outageSince(S: NonNullable<ReturnType<typeof useAppState>['S']>) {
+function outageSince(S: Snapshot) {
   return S.updated
     ? new Date(S.updated * 1000).toLocaleTimeString('es-ES', {
         hour: '2-digit',

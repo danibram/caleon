@@ -10,6 +10,7 @@ import { Banner } from '../components/Banner.tsx'
 import { Icon } from '../components/Icon.tsx'
 import { useApp } from '../context/AppContext.tsx'
 import { DAYS, MODE_LABEL, SYSTEM } from '../lib/constants.ts'
+import { errorMessage } from '../lib/format.ts'
 import { hhmm, modeWithTemp, nowSlotIdx, segments, todayIdx } from '../lib/schedule.ts'
 import { roomById, roomTitle } from '../lib/rooms.ts'
 
@@ -70,13 +71,13 @@ export function TimerView() {
         const w = await api<TimerWeek>(`/api/rooms/${id}/timer?type=${type}`)
         if (cancelled) return
         setWeek(w)
-        setOriginal(JSON.parse(JSON.stringify(w.days)) as string[][])
+        setOriginal(structuredClone(w.days))
         setDirty(new Set())
-        setBrush((prev) => (prev && w.modes.includes(prev) ? prev : w.modes[1]!))
+        setBrush((prev) => (prev && w.modes.includes(prev) ? prev : w.modes[1]))
         setLoadErr(null)
       } catch (e) {
         if (cancelled) return
-        setLoadErr(e instanceof Error ? e.message : String(e))
+        setLoadErr(errorMessage(e))
         setWeek(null)
       }
     })()
@@ -117,14 +118,19 @@ export function TimerView() {
 
   if (!S || !r) return null
 
-  const syncDirtyForDay = (d: number, days: string[][], orig: string[][]) => {
-    const changed = days[d]!.some((m, k) => m !== orig[d]![k])
+  const syncDirtyForDay = ({ d, days, orig }: { d: number; days: string[][]; orig: string[][] }) => {
+    const changed = days[d].some((m, k) => m !== orig[d][k])
     setDirty((prev) => {
       const next = new Set(prev)
       if (changed) next.add(d)
       else next.delete(d)
       return next
     })
+  }
+
+  const cellIndex = (el: Element | null | undefined): number | null => {
+    const cell = el?.closest('.cell')
+    return cell instanceof HTMLElement ? Number(cell.dataset.i) : null
   }
 
   const paintCells = (cells: number[]) => {
@@ -137,7 +143,7 @@ export function TimerView() {
     for (const i of todo) row[i] = brush
     const nextDays = days.map((r, d) => (d === day ? row : r))
     setDays(nextDays)
-    syncDirtyForDay(day, nextDays, original)
+    syncDirtyForDay({ d: day, days: nextDays, orig: original })
     pending.current = true
   }
 
@@ -152,27 +158,25 @@ export function TimerView() {
   }
 
   const onPointerDown = (ev: ReactPointerEvent) => {
-    const t = ev.target as HTMLElement
-    const cell = t.closest('.cell') as HTMLElement | null
-    if (!cell || !dayEditRef.current) return
+    const i = ev.target instanceof Element ? cellIndex(ev.target) : null
+    if (i === null || !dayEditRef.current) return
     painting.current = true
     dayEditRef.current.setPointerCapture(ev.pointerId)
-    paintAt(Number(cell.dataset.i))
+    paintAt(i)
     ev.preventDefault()
   }
 
   const onPointerMove = (ev: ReactPointerEvent) => {
     if (!painting.current) return
-    const el = document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null
-    const cell = el?.closest?.('.cell') as HTMLElement | null
-    if (cell) paintAt(Number(cell.dataset.i))
+    const i = cellIndex(document.elementFromPoint(ev.clientX, ev.clientY))
+    if (i !== null) paintAt(i)
   }
 
   const endPaint = () => {
     painting.current = false
     lastI.current = null
     if (pending.current && daysRef.current && original) {
-      syncDirtyForDay(day, daysRef.current, original)
+      syncDirtyForDay({ d: day, days: daysRef.current, orig: original })
       pending.current = false
     }
   }
@@ -202,7 +206,7 @@ export function TimerView() {
       toast('Horario guardado en el termostato')
       rereadSoon()
     } catch (e) {
-      toast('No se pudo guardar: ' + (e instanceof Error ? e.message : String(e)), 6000)
+      toast('No se pudo guardar: ' + errorMessage(e), 6000)
     }
     setSaving(false)
   }
@@ -225,12 +229,12 @@ export function TimerView() {
         body: { mask },
       })
       setWeek(w)
-      setOriginal(JSON.parse(JSON.stringify(w.days)) as string[][])
+      setOriginal(structuredClone(w.days))
       setCopyOpen(false)
       toast('Horario copiado')
       rereadSoon()
     } catch (e) {
-      toast('No se pudo copiar: ' + (e instanceof Error ? e.message : String(e)), 6000)
+      toast('No se pudo copiar: ' + errorMessage(e), 6000)
     }
   }
 

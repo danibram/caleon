@@ -1,7 +1,8 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { api } from '../api/client.ts'
-import type { MetricsResponse, StateSnapshot } from '../api/types.ts'
+import type { MetricPoint, MetricsResponse, StateSnapshot } from '../api/types.ts'
 import { useApp } from '../context/AppContext.tsx'
+import { isPresent } from '../lib/guards.ts'
 import { metricName } from '../lib/metrics.ts'
 import { modeOf, roomTitle } from '../lib/rooms.ts'
 import { bestRange, PROBES } from './chartData.ts'
@@ -16,7 +17,7 @@ export function ChartsView() {
 }
 
 function Charts({ state }: { state: StateSnapshot }) {
-  const [hours, setHours] = useState(() => bestRange([6, 24, 168, 720], 24, state))
+  const [hours, setHours] = useState(() => bestRange({ ranges: [6, 24, 168, 720], want: 24, state }))
   const drawTok = useRef(0)
 
   const c3SvgRef = useRef<SVGSVGElement>(null)
@@ -29,7 +30,7 @@ function Charts({ state }: { state: StateSnapshot }) {
   const outCount = (state.status || []).filter((m) => m.group === 'Salidas' && metricName(m, state)).length
 
   const humRooms = state.rooms.filter((r) => r.humidity && r.humidity !== '--')
-  const humSuffix = humRooms.length === 1 ? ' · ' + roomTitle(humRooms[0]!) : ''
+  const humSuffix = humRooms.length === 1 ? ' · ' + roomTitle(humRooms[0]) : ''
 
   // reads the snapshot at call time: the metric charts redraw on the timer, not on every state refresh
   const drawMetrics = useEffectEvent(async () => {
@@ -48,55 +49,57 @@ function Charts({ state }: { state: StateSnapshot }) {
     const c3Legend = c3LegendRef.current
     if (!c4Svg || !c4Legend || !c3Svg || !c3Legend) return
 
-    const keys = Object.keys(m)
-    const names = new Map(keys.map((k) => [k, metricName(k, state) || '']))
-    const analog = keys.filter(
-      (k) =>
-        !k.startsWith('Salidas') &&
-        !/· Modo$/.test(k) &&
-        names.get(k) &&
-        !/^(Sensor|Humedad) de /.test(names.get(k)!) &&
-        (m[k] || []).some((p) => p[1] !== null),
+    // metrics without a human name are hidden
+    const named = Object.keys(m).flatMap((key) => {
+      const name = metricName(key, state)
+      return name ? [{ key, name, points: m[key] || [] }] : []
+    })
+    const analog = named.filter(
+      ({ key, name, points }) =>
+        !key.startsWith('Salidas') &&
+        !/· Modo$/.test(key) &&
+        !/^(Sensor|Humedad) de /.test(name) &&
+        points.some((p) => p[1] !== null),
     )
-    const outputs = keys
-      .filter((k) => k.startsWith('Salidas') && names.get(k))
-      .sort((a, b) => names.get(a)!.localeCompare(names.get(b)!, 'es'))
+    const outputs = named
+      .filter(({ key }) => key.startsWith('Salidas'))
+      .sort((a, b) => a.name.localeCompare(b.name, 'es'))
 
-    lineChart(
-      c4Svg,
-      c4Legend,
-      outputs.map((k) => ({
-        name: names.get(k)!,
-        color: /Bomba|caldera/.test(names.get(k)!) ? 'var(--cool)' : 'var(--accent)',
-        points: m[k]!,
+    lineChart({
+      svg: c4Svg,
+      legend: c4Legend,
+      series: outputs.map(({ name, points }) => ({
+        name,
+        color: /Bomba|caldera/.test(name) ? 'var(--cool)' : 'var(--accent)',
+        points,
         noLegend: true,
       })),
       hours,
-      { lanes: true },
-    )
+      lanes: true,
+    })
     const c4Card = c4CardRef.current
     if (c4Card && c4Svg.style.display === 'none') c4Card.classList.add('collapsed')
 
-    const varies = (k: string) => {
-      const v = (m[k] || []).map((p) => p[1]).filter((x) => x !== null) as number[]
+    const varies = (points: MetricPoint[]) => {
+      const v = points.map((p) => p[1]).filter(isPresent)
       return v.length > 1 && Math.max(...v) - Math.min(...v) > 0.05
     }
-    const shownAnalog = analog.filter(varies)
+    const shownAnalog = analog.filter(({ points }) => varies(points))
     const c3Card = c3CardRef.current
     if (c3Card) c3Card.hidden = !shownAnalog.length
 
-    lineChart(
-      c3Svg,
-      c3Legend,
-      shownAnalog.map((k, i) => ({
-        name: names.get(k)!,
-        color: PROBES[i % PROBES.length]!,
-        points: m[k]!,
+    lineChart({
+      svg: c3Svg,
+      legend: c3Legend,
+      series: shownAnalog.map(({ name, points }, i) => ({
+        name,
+        color: PROBES[i % PROBES.length],
+        points,
         hidden: false,
       })),
       hours,
-      { yUnit: '°' },
-    )
+      yUnit: '°',
+    })
   })
 
   useEffect(() => {

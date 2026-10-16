@@ -4,7 +4,7 @@ import { NAV, TABS } from '../lib/icons.ts'
 
 const TAB_ITEMS = NAV.filter(([h]) => TABS.includes(h))
 
-function isActive(path: string, current: string, inTabbar: boolean) {
+function isActive({ path, current, inTabbar }: { path: string; current: string; inTabbar: boolean }) {
   const inMore =
     inTabbar &&
     ['/backups', '/info'].some((x) => current.startsWith(x)) &&
@@ -25,7 +25,7 @@ export function TabBar() {
           key={h}
           to={h}
           viewTransition
-          className={isActive(h, pathname, true) ? 'active' : ''}
+          className={isActive({ path: h, current: pathname, inTabbar: true }) ? 'active' : ''}
         >
           <Icon name={i} />
           <span>{l}</span>
@@ -41,7 +41,7 @@ export function TopNav() {
   return (
     <nav id="nav">
       {NAV.map(([h, l, i]) => (
-        <Link key={h} to={h} viewTransition className={isActive(h, pathname, false) ? 'active' : ''}>
+        <Link key={h} to={h} viewTransition className={isActive({ path: h, current: pathname, inTabbar: false }) ? 'active' : ''}>
           <Icon name={i} />
           <span className="nav-label">{l}</span>
         </Link>

@@ -2,16 +2,16 @@ import { useCallback } from 'react'
 import { SYSTEM } from '../lib/constants.ts'
 import { useApp } from '../context/AppContext.tsx'
 import { roomById } from '../lib/rooms.ts'
-import { num } from '../lib/format.ts'
+import { errorMessage, num } from '../lib/format.ts'
 import type { RoomState, Snapshot } from '../api/types.ts'
 
-type RoomChangeBody = {
-  tdelta?: number
-  mode?: string
-  name?: string
-  season?: string
-  vacation?: string | null
-}
+/** One change per request, as the PATCH handler applies exactly one field. */
+export type RoomChangeBody =
+  | { tdelta: number }
+  | { mode: string }
+  | { name: string }
+  | { season: string }
+  | { vacation: string | null }
 
 type RoomChangeResponse = RoomState & { state?: Snapshot }
 
@@ -19,24 +19,24 @@ export function useRoomChange() {
   const { S, setS, api, toast, rereadSoon, setRoomBusy } = useApp()
 
   return useCallback(
-    async (id: number | string, body: RoomChangeBody) => {
+    async (id: number, body: RoomChangeBody) => {
       const room = roomById(S, id)
       const before = room && { mode: room.mode, tset: room.tset }
-      const numId = Number(id)
 
       setS((prev) => {
         if (!prev) return prev
         const next = structuredClone(prev)
         const r = roomById(next, id)
-        if (r && body.mode) r.mode = body.mode
-        if (r && body.tdelta) {
+        if ('mode' in body) {
+          if (r) r.mode = body.mode
+          if (id === SYSTEM && next.system) next.system.mode = body.mode
+        } else if ('tdelta' in body && r) {
           const t = num(r.tset)
           if (t !== null) r.tset = (t + 0.5 * body.tdelta).toFixed(1) + '°C'
         }
-        if (numId === SYSTEM && body.mode && next.system) next.system.mode = body.mode
         return next
       })
-      setRoomBusy(numId, true)
+      setRoomBusy(id, true)
 
       try {
         const st = await api<RoomChangeResponse>(`/api/rooms/${id}`, { body, any: true })
@@ -45,7 +45,7 @@ export function useRoomChange() {
           const base = full ?? prev
           if (!base) return base
           const next = structuredClone(base)
-          if (numId === SYSTEM) next.system = patch
+          if (id === SYSTEM) next.system = patch
           else {
             const r = roomById(next, id)
             if (r) Object.assign(r, patch)
@@ -64,10 +64,10 @@ export function useRoomChange() {
             return next
           })
         }
-        toast('No se pudo aplicar: ' + (e instanceof Error ? e.message : String(e)), 6000)
+        toast('No se pudo aplicar: ' + errorMessage(e), 6000)
       }
 
-      setRoomBusy(numId, false)
+      setRoomBusy(id, false)
     },
     [S, setS, api, toast, rereadSoon, setRoomBusy],
   )

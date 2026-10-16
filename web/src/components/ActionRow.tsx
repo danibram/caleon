@@ -1,49 +1,48 @@
 import { Link } from 'react-router'
 import { Icon, type IconName } from './Icon.tsx'
 
-export type ActionItem = {
-  tag: 'a' | 'button'
-  href?: string
-  id?: string
+type ActionBase = {
   icon: IconName
   label: string
   sub?: string
-  onClick?: () => void
-  disabled?: boolean
 }
+
+export type ActionItem =
+  | (ActionBase & { tag: 'a'; href: string })
+  | (ActionBase & { tag: 'button'; id?: string; onClick?: () => void; disabled?: boolean })
 
 export function ActionRow({ items }: { items: ActionItem[] }) {
   return (
     <div className="actrow stagger">
-      {items.map(({ tag, href, id, icon, label, sub, onClick, disabled }, k) => {
+      {items.map((item, k) => {
         const inner = (
           <>
             <span className="ic">
-              <Icon name={icon} />
+              <Icon name={item.icon} />
             </span>
             <span className="lbl">
-              {label}
-              {sub ? <span className="sub">{sub}</span> : null}
+              {item.label}
+              {item.sub ? <span className="sub">{item.sub}</span> : null}
             </span>
             <Icon name="chevron" className="chev" />
           </>
         )
-        const style = { ['--k' as string]: k }
-        if (tag === 'a' && href) {
+        const style = { '--k': k }
+        if (item.tag === 'a') {
           return (
-            <Link key={href + label} to={href.replace(/^#/, '')} style={style}>
+            <Link key={item.href + item.label} to={item.href.replace(/^#/, '')} style={style}>
               {inner}
             </Link>
           )
         }
         return (
           <button
-            key={id || label}
+            key={item.id || item.label}
             type="button"
-            id={id}
+            id={item.id}
             style={style}
-            disabled={disabled}
-            onClick={onClick}
+            disabled={item.disabled}
+            onClick={item.onClick}
           >
             {inner}
           </button>

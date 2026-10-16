@@ -24,33 +24,31 @@ export const nowSlotIdx = () => {
   return d.getHours() * 2 + (d.getMinutes() >= 30 ? 1 : 0)
 }
 
-export type NextChange = {
-  mode?: string
-  slot?: number
-  dayOffset?: number
-  now: string
-}
+export type NextChange =
+  | { kind: 'change'; now: string; mode: string; slot: number; dayOffset: number }
+  | { kind: 'steady'; now: string }
 
 export function nextChange(r: Room): NextChange | null {
   if (!r.week) return null
   const today = todayIdx()
   const ns = nowSlotIdx()
-  const cur = r.week[today]![ns]!
+  const cur = r.week[today][ns]
   for (let k = 1; k <= 48 * 7; k++) {
     const abs = today * 48 + ns + k
     const d = Math.floor(abs / 48) % 7
     const i = abs % 48
-    const m = r.week[d]![i]!
+    const m = r.week[d][i]
     if (m !== cur) {
       return {
+        kind: 'change',
+        now: cur,
         mode: m,
         slot: i,
         dayOffset: Math.floor((today * 48 + ns + k) / 48) - today,
-        now: cur,
       }
     }
   }
-  return { now: cur }
+  return { kind: 'steady', now: cur }
 }
 
 export function modeWithTemp(r: Room, mode: string, S: Snapshot | null): string {
@@ -67,33 +65,26 @@ export function bandCaption(r: Room, big = false): BandCaption {
   if (!r.week) return { caption: '', paused: false }
   const nc = nextChange(r)
   const paused = modeOf(r) === 'off' || !!r.vacation
-  const when =
-    nc && nc.mode
-      ? `${nc.dayOffset === 0 ? 'a las' : nc.dayOffset === 1 ? 'mañana a las' : DAYS[(todayIdx() + (nc.dayOffset ?? 0)) % 7]!.toLowerCase() + ' a las'} ${hhmm(nc.slot!)}`
-      : ''
-  const next = nc && nc.mode ? `${MODE_LABEL[nc.mode] || nc.mode} ${when}` : ''
-  const caption = paused
-    ? r.vacation
+  let caption: string
+  if (paused) {
+    caption = r.vacation
       ? 'Programa detenido durante las vacaciones'
       : big
         ? 'Programa de hoy, detenido mientras esté apagada'
         : 'Programa detenido'
-    : next
-      ? `Ahora ${(MODE_LABEL[nc!.now] || '').toLowerCase()} · ${next}`
-      : `${MODE_LABEL[nc?.now || ''] || ''} todo el día`
+  } else if (nc?.kind === 'change') {
+    const when =
+      nc.dayOffset === 0
+        ? 'a las'
+        : nc.dayOffset === 1
+          ? 'mañana a las'
+          : DAYS[(todayIdx() + nc.dayOffset) % 7].toLowerCase() + ' a las'
+    const next = `${MODE_LABEL[nc.mode] || nc.mode} ${when} ${hhmm(nc.slot)}`
+    caption = `Ahora ${(MODE_LABEL[nc.now] || '').toLowerCase()} · ${next}`
+  } else {
+    caption = `${MODE_LABEL[nc?.now || ''] || ''} todo el día`
+  }
   return { caption, paused }
-}
-
-export function historySpanFromState(S: Snapshot | null): number {
-  return S?.history_since ? Date.now() / 1000 - S.history_since : 0
-}
-
-export function bestRangeFromState(ranges: number[], want: number, S: Snapshot | null): number {
-  const span = historySpanFromState(S)
-  return (
-    [...ranges].reverse().find((h) => h <= want && (h === ranges[0] || span >= h * 3600 * 0.3)) ||
-    ranges[0]!
-  )
 }
 
 /** Presets for vacation datetime-local input. */

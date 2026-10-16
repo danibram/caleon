@@ -5,9 +5,10 @@ import { es, fmtC, num } from './format.ts'
 export const isDefaultName = (n: string | null | undefined) =>
   !n || /^habitaci[oó]n\s*\d+$/i.test(n.trim())
 
-export const typeLabel = (t: string | null | undefined) =>
-  ROOM_TYPES[t || ''] ||
-  (/^room(\d+)$/.test(t || '') ? 'Habitación ' + Number(t!.slice(4)) : t || '')
+export const typeLabel = (t: string | null | undefined) => {
+  const key = t || ''
+  return ROOM_TYPES[key] || (/^room(\d+)$/.test(key) ? 'Habitación ' + Number(key.slice(4)) : key)
+}
 
 export const roomTitle = (r: Room) =>
   r.id === SYSTEM
@@ -17,17 +18,16 @@ export const roomTitle = (r: Room) =>
       : r.name
 
 export const sensorRoom = (label: string, S: Snapshot | null): Room | null => {
-  const n = S?.sensors?.[label]
-  if (n == null) return null
-  const name = typeof n === 'string' ? n : String(n)
-  return S!.rooms.find((r) => r.name === name) ?? null
+  if (!S) return null
+  const name = S.sensors[label]
+  if (name == null) return null
+  return S.rooms.find((r) => r.name === name) ?? null
 }
 
 export const zoneRooms = (S: Snapshot | null): Record<string, Room> => {
   const out: Record<string, Room> = {}
   if (!S) return out
-  for (const [z, t] of Object.entries(S.zones || {})) {
-    const type = typeof t === 'string' ? t : String(t)
+  for (const [z, type] of Object.entries(S.zones)) {
     const r = S.rooms.find((room) => room.type === type)
     if (r) out[z] = r
   }
@@ -61,9 +61,9 @@ export function stateLine(r: Room): StateLine {
     : { cls: mode, text: base }
 }
 
-export function roomById(S: Snapshot | null, id: number | string): Room | undefined {
+export function roomById(S: Snapshot | null, id: number): Room | undefined {
   if (!S) return undefined
-  if (id == SYSTEM || Number(id) === SYSTEM) {
+  if (id === SYSTEM) {
     if (!S.system) return undefined
     return {
       id: SYSTEM,
@@ -75,6 +75,6 @@ export function roomById(S: Snapshot | null, id: number | string): Room | undefi
       name: 'Todas las habitaciones',
     }
   }
-  return S.rooms.find((r) => r.id == id)
+  return S.rooms.find((r) => r.id === id)
 }
 

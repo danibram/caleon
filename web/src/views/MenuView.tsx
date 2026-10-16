@@ -16,9 +16,11 @@ import { RoomIcon } from '../components/RoomIcon'
 import { useAppState } from '../context/AppContext'
 import { useNow } from '../hooks/useNow'
 import { DAYS } from '../lib/constants'
-import { shortErr } from '../lib/format'
+import { errorMessage, shortErr } from '../lib/format'
+import { hasMenuSync, MENU_SYNC_STATE } from '../lib/menuSync'
 import { roomTitle, zoneRooms } from '../lib/rooms'
 import { ServiceTimer } from './menu/ServiceTimer'
+import { parseMenuBody, type MenuBody, type MenuResponse, type MenuScreen } from './menu/screens'
 import {
   MENU_DANGER,
   MENU_HELP,
@@ -36,21 +38,14 @@ import {
   type MenuTrailItem,
 } from './menu/helpers'
 
-type MenuScreen = {
-  id: string
-  title: string
-  type: string
-  back?: string
-  back_hold?: string
-  hold_action?: string
-  forward_hold?: string
-  forward?: string
-}
+type MenuState = { menu: MenuScreen; body: MenuBody }
 
-type MenuResponse = {
-  menu: MenuScreen
-  detail: Record<string, unknown>
-}
+const toState = (r: MenuResponse): MenuState => ({
+  menu: r.menu,
+  body: parseMenuBody(r.menu.type, r.detail),
+})
+
+type MenuAction = { menuId: string; action: string; entry?: string }
 
 function menuRootFromPath(pathname: string): string {
   if (pathname === '/menu' || pathname === '/menu/') return ''
@@ -62,8 +57,7 @@ export default function MenuView() {
   const navType = useNavigationType()
   const [boot, setBoot] = useState(location.key)
   // URL updates that only mirror the screen already open keep it; any other navigation into the menu starts over
-  const selfSync =
-    navType === 'REPLACE' && (location.state as { menuSync?: boolean } | null)?.menuSync
+  const selfSync = navType === 'REPLACE' && hasMenuSync(location.state)
   if (!selfSync && boot !== location.key) setBoot(location.key)
   return <MenuScreen key={boot} root={menuRootFromPath(location.pathname)} />
 }
@@ -75,7 +69,7 @@ function MenuScreen({ root }: { root: string }) {
   // the device stores no year for a month/day entry; the picker needs one for its value
   const now = useNow()
 
-  const [menuCur, setMenuCur] = useState<MenuResponse | null>(null)
+  const [menuCur, setMenuCur] = useState<MenuState | null>(null)
   const [menuTrail, setMenuTrail] = useState<MenuTrailItem[]>(() =>
     root === 'status'
       ? [{ id: 'cal:1', title: 'Experto', entry: 'Experto' }]
@@ -119,13 +113,13 @@ function MenuScreen({ root }: { root: string }) {
               ? '/p/' + path.map(encodeURIComponent).join('/')
               : '')
       if (pathnameRef.current === h) return
-      navigate(h, { replace: true, state: { menuSync: true } })
+      navigate(h, { replace: true, state: MENU_SYNC_STATE })
     },
     [navigate],
   )
 
   const renderAfterNav = useCallback(
-    (r: MenuResponse, trail: MenuTrailItem[]) => {
+    (r: MenuState, trail: MenuTrailItem[]) => {
       setMenuCur(r)
       setMenuTrail(trail)
       syncUrl(trail)
@@ -134,7 +128,7 @@ function MenuScreen({ root }: { root: string }) {
   )
 
   const go = useCallback(
-    async function go(id: string, action: string): Promise<void> {
+    async function go({ id, action }: { id: string; action: string }): Promise<void> {
       const seq0 = navGen()
       try {
         const r = await api<MenuResponse>('/api/menu/action', {
@@ -147,11 +141,11 @@ function MenuScreen({ root }: { root: string }) {
             ['back', 'forward', 'exit', 'status'].includes(action))
         )
           rereadSoon()
-        if (!r.menu?.id || action === 'exit') {
+        if (!r.menu.id || action === 'exit') {
           setMenuCur(null)
           setMenuTrail([])
           rootRef.current = ''
-          return go('', '')
+          return go({ id: '', action: '' })
         }
         const prev = menuCurRef.current
         const trail = [...menuTrailRef.current]
@@ -184,16 +178,16 @@ function MenuScreen({ root }: { root: string }) {
           ]
         else nextTrail = trail
         pendingEntry.current = null
-        renderAfterNav(r, nextTrail)
+        renderAfterNav(toState(r), nextTrail)
         setWaitingBackup(false)
         setOpenError(null)
       } catch (e) {
         if (seq0 !== navGen()) return
-        const msg = (e as Error).message || ''
+        const msg = errorMessage(e)
         if (/leyendo la configuración/i.test(msg)) {
           setWaitingBackup(true)
           window.setTimeout(() => {
-            if (seq0 === navGen()) void go(id, action)
+            if (seq0 === navGen()) void go({ id, action })
           }, 4000)
           return
         }
@@ -205,11 +199,11 @@ function MenuScreen({ root }: { root: string }) {
   )
 
   const runAction = useCallback(
-    (menuId: string, action: string, entry?: string) => {
+    ({ menuId, action, entry }: MenuAction) => {
       if (menuBusyRef.current || !action) return
       pendingEntry.current = entry ?? null
       setMenuBusyFlag(true)
-      void go(menuId, action).finally(() => {
+      void go({ id: menuId, action }).finally(() => {
         setMenuBusyFlag(false)
       })
     },
@@ -230,7 +224,7 @@ function MenuScreen({ root }: { root: string }) {
             entry: e,
           })),
         ]
-        renderAfterNav(r, trail)
+        renderAfterNav(toState(r), trail)
         setOpenError(null)
       }
       try {
@@ -241,7 +235,7 @@ function MenuScreen({ root }: { root: string }) {
         try {
           await tryOpen()
         } catch {
-          await go('', '')
+          await go({ id: '', action: '' })
         }
       }
     },
@@ -266,7 +260,7 @@ function MenuScreen({ root }: { root: string }) {
         .map(decodeURIComponent)
       void openPath(path)
     } else {
-      void go('', root === 'status' ? 'status' : '')
+      void go({ id: '', action: root === 'status' ? 'status' : '' })
     }
   })
 
@@ -279,8 +273,8 @@ function MenuScreen({ root }: { root: string }) {
 
   useEffect(() => {
     const onInput = (ev: Event) => {
-      const t = ev.target as HTMLElement
-      if (t.matches?.('#view input, #view select, #view textarea'))
+      const t = ev.target
+      if (t instanceof HTMLElement && t.matches('#view input, #view select, #view textarea'))
         t.dataset.dirty = '1'
       dirtyRef.current = true
     }
@@ -300,10 +294,12 @@ function MenuScreen({ root }: { root: string }) {
       )
         return
       try {
-        const detail = await api<Record<string, unknown>>(
+        const detail = await api(
           `/api/menu/detail?id=${encodeURIComponent(cur.menu.id)}&type=${encodeURIComponent(cur.menu.type)}`,
         )
-        setMenuCur((prev) => (prev ? { ...prev, detail } : prev))
+        setMenuCur((prev) =>
+          prev ? { ...prev, body: parseMenuBody(prev.menu.type, detail) } : prev,
+        )
       } catch {
         /* ignore */
       }
@@ -318,14 +314,14 @@ function MenuScreen({ root }: { root: string }) {
       if (!cur || menuBusyRef.current) return
       setMenuBusyFlag(true)
       try {
-        const detail = await api<Record<string, unknown>>('/api/menu/set', {
+        const detail = await api('/api/menu/set', {
           body: { id: cur.menu.id, type: cur.menu.type, ...body },
         })
-        setMenuCur({ ...cur, detail })
+        setMenuCur({ ...cur, body: parseMenuBody(cur.menu.type, detail) })
         toast('Guardado')
         rereadSoon()
       } catch (e) {
-        toast('Error: ' + (e as Error).message, 6000)
+        toast('Error: ' + errorMessage(e), 6000)
       } finally {
         setMenuBusyFlag(false)
       }
@@ -334,27 +330,27 @@ function MenuScreen({ root }: { root: string }) {
   )
 
   const onCrumb = useCallback(
-    async (j: number, menuId: string) => {
-      if (j === 0) {
-        runAction(menuId, 'exit')
+    async ({ index, menuId }: { index: number; menuId: string }) => {
+      if (index === 0) {
+        runAction({ menuId, action: 'exit' })
         return
       }
       try {
         const r = await api<MenuResponse>('/api/menu/open', {
-          body: { path: entryPath(menuTrailRef.current).slice(0, j) },
+          body: { path: entryPath(menuTrailRef.current).slice(0, index) },
         })
-        const trail = menuTrailRef.current.slice(0, j + 1)
-        trail[j].id = r.menu.id
-        renderAfterNav(r, trail)
+        const trail = menuTrailRef.current.slice(0, index + 1)
+        trail[index].id = r.menu.id
+        renderAfterNav(toState(r), trail)
       } catch (e) {
-        toast((e as Error).message, 5000)
+        toast(errorMessage(e), 5000)
       }
     },
     [api, renderAfterNav, runAction, toast],
   )
 
   const handleTimerCopy = useCallback(
-    async (day: number, mask: number) => {
+    async ({ day, mask }: { day: number; mask: number }) => {
       const cur = menuCurRef.current
       if (!cur || menuBusyRef.current) return
       setMenuBusyFlag(true)
@@ -365,7 +361,7 @@ function MenuScreen({ root }: { root: string }) {
         toast('Copiado')
         rereadSoon()
       } catch (e) {
-        toast((e as Error).message, 6000)
+        toast(errorMessage(e), 6000)
       } finally {
         setMenuBusyFlag(false)
       }
@@ -397,7 +393,7 @@ function MenuScreen({ root }: { root: string }) {
           id="mRetry"
           onClick={() => {
             setOpenError(null)
-            void go('', rootRef.current === 'status' ? 'status' : '')
+            void go({ id: '', action: rootRef.current === 'status' ? 'status' : '' })
           }}
         >
           Reintentar
@@ -409,462 +405,449 @@ function MenuScreen({ root }: { root: string }) {
   if (!menuCur) return null
 
   const m = menuCur.menu
-  const d = menuCur.detail
-  const t = m.type
+  const d = menuCur.body
   const zr = zoneRooms(S)
 
   let body: ReactNode
 
-  if (t === 'string list') {
-    const base = entryPath(menuTrail)
-    const items = (d.menu as { title: string; action?: string; hold_action?: string }[]) || []
-    body = (
-      <div className="list menu-list">
-        {items.map((i) => {
-          const raw = unent(i.title)
-          let val = menuValues
-            ? menuValues[[...base, raw].join(' › ')]
-            : undefined
-          if (
-            raw === 'Habitación' &&
-            /^Zona [A-Z]$/.test(base[base.length - 1] || '')
-          ) {
-            const zz = zr[base[base.length - 1].slice(-1)]
-            val = zz ? roomTitle(zz) : 'Ninguna'
-          }
-          const zone = /^Zona ([A-Z])$/.exec(raw)
-          const zroom =
-            zone && zr[zone[1]]
-              ? roomTitle(zr[zone[1]])
-              : zone
-                ? 'sin habitación'
-                : ''
-          const help = MENU_HELP[raw]
-          const zoneRoom = zone && zr[zone[1]]
-          const mi =
-            MENU_ICON[raw] || (/^Zona [A-Z]$/.test(raw) ? 'zone' : 'sliders')
-          return (
-            <button
-              type="button"
-              key={raw + (i.action || '')}
-              className={MENU_DANGER.test(raw) ? 'danger-row' : ''}
-              disabled={!i.action}
-              onClick={() => runAction(m.id, i.action!, raw)}
-            >
-              {zoneRoom ? (
-                <RoomIcon room={zoneRoom} size="sm" />
-              ) : mi ? (
-                <span className="mic">
-                  <Icon name={mi} />
+  switch (d.kind) {
+    case 'string list': {
+      const base = entryPath(menuTrail)
+      body = (
+        <div className="list menu-list">
+          {d.items.map((i) => {
+            const raw = unent(i.title)
+            const action = i.action
+            const holdAction = i.hold_action
+            let val = menuValues
+              ? menuValues[[...base, raw].join(' › ')]
+              : undefined
+            if (
+              raw === 'Habitación' &&
+              /^Zona [A-Z]$/.test(base[base.length - 1] || '')
+            ) {
+              const zz = zr[base[base.length - 1].slice(-1)]
+              val = zz ? roomTitle(zz) : 'Ninguna'
+            }
+            const zone = /^Zona ([A-Z])$/.exec(raw)
+            const zroom =
+              zone && zr[zone[1]]
+                ? roomTitle(zr[zone[1]])
+                : zone
+                  ? 'sin habitación'
+                  : ''
+            const help = MENU_HELP[raw]
+            const zoneRoom = zone && zr[zone[1]]
+            const mi =
+              MENU_ICON[raw] || (/^Zona [A-Z]$/.test(raw) ? 'zone' : 'sliders')
+            return (
+              <button
+                type="button"
+                key={raw + (action || '')}
+                className={MENU_DANGER.test(raw) ? 'danger-row' : ''}
+                disabled={!action}
+                onClick={action ? () => runAction({ menuId: m.id, action, entry: raw }) : undefined}
+              >
+                {zoneRoom ? (
+                  <RoomIcon room={zoneRoom} size="sm" />
+                ) : mi ? (
+                  <span className="mic">
+                    <Icon name={mi} />
+                  </span>
+                ) : null}
+                <span className="ml">
+                  <span>
+                    {prettyTitle(raw)}
+                    {zroom ? (
+                      <span className="muted"> · {zroom}</span>
+                    ) : null}
+                  </span>
+                  {help ? <small>{help}</small> : null}
                 </span>
-              ) : null}
-              <span className="ml">
-                <span>
-                  {prettyTitle(raw)}
-                  {zroom ? (
-                    <span className="muted"> · {zroom}</span>
+                <span className="row">
+                  {val !== undefined && val !== '' ? (
+                    <span className="mval">
+                      {/^[01]$/.test(val) ? (val === '1' ? 'Sí' : 'No') : onOff(es(val))}
+                    </span>
                   ) : null}
-                </span>
-                {help ? <small>{help}</small> : null}
-              </span>
-              <span className="row">
-                {val !== undefined && val !== '' ? (
-                  <span className="mval">
-                    {/^[01]$/.test(val) ? (val === '1' ? 'Sí' : 'No') : onOff(es(val))}
-                  </span>
-                ) : null}
-                {i.hold_action ? (
-                  <span
-                    className="btn small"
-                    role="button"
-                    tabIndex={0}
-                    onClick={(ev) => {
-                      ev.stopPropagation()
-                      runAction(m.id, i.hold_action!)
-                    }}
-                    onKeyDown={(ev) => {
-                      if (ev.key === 'Enter') {
+                  {holdAction ? (
+                    <span
+                      className="btn small"
+                      role="button"
+                      tabIndex={0}
+                      onClick={(ev) => {
                         ev.stopPropagation()
-                        runAction(m.id, i.hold_action!)
-                      }
-                    }}
-                  >
-                    ⋯
-                  </span>
-                ) : null}
-                <Icon name="chevron" className="chev" />
-              </span>
-            </button>
-          )
-        })}
-      </div>
-    )
-  } else if (t === 'dynamic list' || t === 'dynamic list tiled') {
-    const items =
-      (d.menu as {
-        highlighted?: boolean
-        action?: string
-        icon?: string
-        icon_text?: string
-        title?: string
-        hold_action?: string
-      }[]) || []
-    body = (
-      <>
-        {d.hint ? <p className="muted">{String(d.hint)}</p> : null}
-        <div className="tiles">
-          {items.map((i, idx) => (
-            <div
-              key={idx}
-              className={`tile ${i.highlighted ? 'hl' : ''} ${i.action ? '' : 'disabled'}`}
-              role={i.action ? 'button' : undefined}
-              tabIndex={i.action ? 0 : undefined}
-              onClick={() => i.action && runAction(m.id, i.action)}
-              onKeyDown={(ev) => {
-                if (i.action && (ev.key === 'Enter' || ev.key === ' '))
-                  runAction(m.id, i.action)
-              }}
-            >
-              <img
-                src={`/icons/${i.icon || 'option_empty'}.svg`}
-                alt=""
-                onError={(ev) => {
-                  ;(ev.target as HTMLImageElement).style.visibility = 'hidden'
-                }}
-              />
-              <b>{i.icon_text}</b>
-              <span className="small">{i.title || tileRoomName(i.icon, S)}</span>
-              {i.hold_action ? (
-                <button
-                  type="button"
-                  className="btn small"
-                  onClick={(ev) => {
-                    ev.stopPropagation()
-                    runAction(m.id, i.hold_action!)
+                        runAction({ menuId: m.id, action: holdAction })
+                      }}
+                      onKeyDown={(ev) => {
+                        if (ev.key === 'Enter') {
+                          ev.stopPropagation()
+                          runAction({ menuId: m.id, action: holdAction })
+                        }
+                      }}
+                    >
+                      ⋯
+                    </span>
+                  ) : null}
+                  <Icon name="chevron" className="chev" />
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )
+      break
+    }
+    case 'tiles':
+      body = (
+        <>
+          {d.hint ? <p className="muted">{d.hint}</p> : null}
+          <div className="tiles">
+            {d.items.map((i, idx) => {
+              const action = i.action
+              const holdAction = i.hold_action
+              return (
+                <div
+                  key={idx}
+                  className={`tile ${i.highlighted ? 'hl' : ''} ${action ? '' : 'disabled'}`}
+                  role={action ? 'button' : undefined}
+                  tabIndex={action ? 0 : undefined}
+                  onClick={action ? () => runAction({ menuId: m.id, action }) : undefined}
+                  onKeyDown={(ev) => {
+                    if (action && (ev.key === 'Enter' || ev.key === ' '))
+                      runAction({ menuId: m.id, action })
                   }}
                 >
-                  ⋯
-                </button>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      </>
-    )
-  } else if (t === 'options') {
-    body = (
-      <>
-        <p className="muted" style={{ textAlign: 'center' }}>
-          {MENU_HELP[unent(m.title)] || es(String(d.hint ?? ''))}
-        </p>
-        <div className="row" style={{ justifyContent: 'center', gap: 24 }}>
-          <button
-            type="button"
-            className="round"
-            disabled={!d.decrease}
-            onClick={() => runAction(m.id, String(d.decrease))}
-          >
-            −
-          </button>
-          <div className="big-value">{es(String(d.value ?? ''))}</div>
-          <button
-            type="button"
-            className="round"
-            disabled={!d.increase}
-            onClick={() => runAction(m.id, String(d.increase))}
-          >
-            +
-          </button>
-        </div>
-      </>
-    )
-  } else if (t === 'offset') {
-    const rows =
-      (d.menu as {
-        icon?: string
-        icon_text?: string
-        value?: string
-        decrease?: string
-        increase?: string
-        offset?: string
-      }[]) || []
-    body = (
-      <>
-        {d.hint ? <p className="muted">{String(d.hint)}</p> : null}
-        <table>
-          <tbody>
-            {rows.map((i, idx) => (
-              <tr key={idx}>
-                <td>
                   <img
                     src={`/icons/${i.icon || 'option_empty'}.svg`}
                     alt=""
-                    style={{ width: 28, height: 28 }}
                     onError={(ev) => {
-                      ;(ev.target as HTMLImageElement).style.visibility = 'hidden'
+                      ev.currentTarget.style.visibility = 'hidden'
                     }}
                   />
-                </td>
-                <td>{i.icon_text}</td>
-                <td className="num">{i.value}</td>
-                <td className="num">
-                  <button
-                    type="button"
-                    className="round"
-                    style={{ width: 32, height: 32, fontSize: 18 }}
-                    disabled={!i.decrease}
-                    onClick={() => runAction(m.id, i.decrease!)}
-                  >
-                    −
-                  </button>
-                  <b style={{ display: 'inline-block', minWidth: 60, textAlign: 'center' }}>
-                    {i.offset}
-                  </b>
-                  <button
-                    type="button"
-                    className="round"
-                    style={{ width: 32, height: 32, fontSize: 18 }}
-                    disabled={!i.increase}
-                    onClick={() => runAction(m.id, i.increase!)}
-                  >
-                    +
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </>
-    )
-  } else if (t === 'information') {
-    const lines =
-      (d.menu as { text: string; action?: string }[]) || []
-    body = (
-      <div className="info-rows">
-        {lines.map((l, idx) => {
-          const raw = unent(l.text).trim()
-          const kv0 = /^(.+?): (.+)$/.exec(raw)
-          let kv: [string, string, string] | null = null
-          if (kv0) {
-            const [lab, val] = infoLabel(kv0[1], kv0[2], S)
-            kv = [raw, lab, onOff(es(val))]
-          }
-          const headKey = raw.replace(/:$/, '')
-          const head = INFO_HEAD[headKey]
-          const text = fmtClockSec(
-            fmtIsoDate(
-              head
-                ? head + (raw.endsWith(':') ? ':' : '')
-                : onOff(es(raw)),
-            ),
-          )
-          if (!text.trim()) return <div key={idx} className="ir-gap" />
-          if (kv && /^(Exterior|Bomba)/.test(kv[1]))
-            return (
-              <Fragment key={idx}>
-                <div className="ir-head">General</div>
-                <div
-                  className={l.action ? 'ir link' : 'ir'}
-                  role={l.action ? 'button' : undefined}
-                  tabIndex={l.action ? 0 : undefined}
-                  onClick={() => l.action && runAction(m.id, l.action)}
-                >
+                  <b>{i.icon_text}</b>
+                  <span className="small">{i.title || tileRoomName(i.icon, S)}</span>
+                  {holdAction ? (
+                    <button
+                      type="button"
+                      className="btn small"
+                      onClick={(ev) => {
+                        ev.stopPropagation()
+                        runAction({ menuId: m.id, action: holdAction })
+                      }}
+                    >
+                      ⋯
+                    </button>
+                  ) : null}
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )
+      break
+    case 'options': {
+      const { decrease, increase } = d
+      body = (
+        <>
+          <p className="muted" style={{ textAlign: 'center' }}>
+            {MENU_HELP[unent(m.title)] || es(d.hint)}
+          </p>
+          <div className="row" style={{ justifyContent: 'center', gap: 24 }}>
+            <button
+              type="button"
+              className="round"
+              disabled={!decrease}
+              onClick={decrease ? () => runAction({ menuId: m.id, action: decrease }) : undefined}
+            >
+              −
+            </button>
+            <div className="big-value">{es(d.value)}</div>
+            <button
+              type="button"
+              className="round"
+              disabled={!increase}
+              onClick={increase ? () => runAction({ menuId: m.id, action: increase }) : undefined}
+            >
+              +
+            </button>
+          </div>
+        </>
+      )
+      break
+    }
+    case 'offset':
+      body = (
+        <>
+          {d.hint ? <p className="muted">{d.hint}</p> : null}
+          <table>
+            <tbody>
+              {d.rows.map((i, idx) => {
+                const { decrease, increase } = i
+                return (
+                  <tr key={idx}>
+                    <td>
+                      <img
+                        src={`/icons/${i.icon || 'option_empty'}.svg`}
+                        alt=""
+                        style={{ width: 28, height: 28 }}
+                        onError={(ev) => {
+                          ev.currentTarget.style.visibility = 'hidden'
+                        }}
+                      />
+                    </td>
+                    <td>{i.icon_text}</td>
+                    <td className="num">{i.value}</td>
+                    <td className="num">
+                      <button
+                        type="button"
+                        className="round"
+                        style={{ width: 32, height: 32, fontSize: 18 }}
+                        disabled={!decrease}
+                        onClick={
+                          decrease ? () => runAction({ menuId: m.id, action: decrease }) : undefined
+                        }
+                      >
+                        −
+                      </button>
+                      <b style={{ display: 'inline-block', minWidth: 60, textAlign: 'center' }}>
+                        {i.offset}
+                      </b>
+                      <button
+                        type="button"
+                        className="round"
+                        style={{ width: 32, height: 32, fontSize: 18 }}
+                        disabled={!increase}
+                        onClick={
+                          increase ? () => runAction({ menuId: m.id, action: increase }) : undefined
+                        }
+                      >
+                        +
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </>
+      )
+      break
+    case 'information':
+      body = (
+        <div className="info-rows">
+          {d.lines.map((l, idx) => {
+            const raw = unent(l.text).trim()
+            const action = l.action
+            const kv0 = /^(.+?): (.+)$/.exec(raw)
+            let kv: [string, string, string] | null = null
+            if (kv0) {
+              const [lab, val] = infoLabel({ label: kv0[1], value: kv0[2], S })
+              kv = [raw, lab, onOff(es(val))]
+            }
+            const headKey = raw.replace(/:$/, '')
+            const head = INFO_HEAD[headKey]
+            const text = fmtClockSec(
+              fmtIsoDate(
+                head
+                  ? head + (raw.endsWith(':') ? ':' : '')
+                  : onOff(es(raw)),
+              ),
+            )
+            const rowProps = {
+              className: action ? 'ir link' : 'ir',
+              role: action ? 'button' : undefined,
+              tabIndex: action ? 0 : undefined,
+              onClick: action ? () => runAction({ menuId: m.id, action }) : undefined,
+            }
+            if (!text.trim()) return <div key={idx} className="ir-gap" />
+            if (kv && /^(Exterior|Bomba)/.test(kv[1]))
+              return (
+                <Fragment key={idx}>
+                  <div className="ir-head">General</div>
+                  <div {...rowProps}>
+                    <span>{kv[1]}</span>
+                    <b>{kv[2]}</b>
+                  </div>
+                </Fragment>
+              )
+            if (kv)
+              return (
+                <div key={idx} {...rowProps}>
                   <span>{kv[1]}</span>
                   <b>{kv[2]}</b>
                 </div>
-              </Fragment>
+              )
+            if (
+              /[a-záéíóúñ]/i.test(text) &&
+              (text.trim().endsWith(':') || !/\d/.test(text) || INFO_HEAD[raw])
             )
-          if (kv)
+              return (
+                <div key={idx} className="ir-head">
+                  {text.replace(/:$/, '')}
+                </div>
+              )
             return (
-              <div
-                key={idx}
-                className={l.action ? 'ir link' : 'ir'}
-                role={l.action ? 'button' : undefined}
-                tabIndex={l.action ? 0 : undefined}
-                onClick={() => l.action && runAction(m.id, l.action)}
-              >
-                <span>{kv[1]}</span>
-                <b>{kv[2]}</b>
+              <div key={idx} {...rowProps}>
+                <span>{text}</span>
               </div>
             )
-          if (
-            /[a-záéíóúñ]/i.test(text) &&
-            (text.trim().endsWith(':') || !/\d/.test(text) || INFO_HEAD[raw])
-          )
-            return (
-              <div key={idx} className="ir-head">
-                {text.replace(/:$/, '')}
-              </div>
-            )
-          return (
-            <div
-              key={idx}
-              className={l.action ? 'ir link' : 'ir'}
-              role={l.action ? 'button' : undefined}
-              tabIndex={l.action ? 0 : undefined}
-              onClick={() => l.action && runAction(m.id, l.action)}
-            >
-              <span>{text}</span>
-            </div>
-          )
-        })}
-      </div>
-    )
-  } else if (t === 'binary query') {
-    const hints = (d.hint as { line: string }[]) || []
-    body = (
-      <>
-        <div className="lines">
-          {hints.map((l, i) => (
-            <p key={i} className="center">
-              {l.line}
-            </p>
-          ))}
+          })}
         </div>
-        <div
-          className="row"
-          style={{ justifyContent: 'center', gap: 12, marginTop: 16 }}
-        >
-          <button
-            type="button"
-            className={`btn ${d.value == d.yes ? 'primary' : ''}`}
-            style={{ minWidth: 90 }}
-            onClick={() => runAction(m.id, String(d.yes))}
-          >
-            Sí
-          </button>
-          <button
-            type="button"
-            className={`btn ${d.value == d.no ? 'primary' : ''}`}
-            style={{ minWidth: 90 }}
-            onClick={() => runAction(m.id, String(d.no))}
-          >
-            No
-          </button>
-        </div>
-      </>
-    )
-  } else if (t === 'system date' || t === 'month day') {
-    const p = (n: number) => String(n).padStart(2, '0')
-    const year = t === 'month day' ? new Date(now).getFullYear() : Number(d.year)
-    const has = Number(d.day) > 0 && Number(d.month) > 0
-    body = (
-      <DateTimeForm
-        hint={d.hint ? String(d.hint) : undefined}
-        showClear={t === 'month day'}
-        onSubmit={(fields) => void setMenuField(fields)}
-        menuBusy={menuBusyRef}
-        initial={
-          has
-            ? { kind: 'date', value: `${year}-${p(Number(d.month))}-${p(Number(d.day))}` }
-            : { kind: 'date', value: '' }
-        }
-      />
-    )
-  } else if (t === 'system time') {
-    const p = (n: number) => String(n).padStart(2, '0')
-    body = (
-      <DateTimeForm
-        onSubmit={(fields) => void setMenuField(fields)}
-        menuBusy={menuBusyRef}
-        showNow
-        initial={{
-          kind: 'time',
-          value: `${p(Number(d.hour))}:${p(Number(d.minute))}`,
-        }}
-      />
-    )
-  } else if (t === 'system datetime') {
-    const p = (n: number) => String(n).padStart(2, '0')
-    body = (
-      <DateTimeForm
-        onSubmit={(fields) => void setMenuField(fields)}
-        menuBusy={menuBusyRef}
-        showNow
-        initial={{
-          kind: 'datetime',
-          value: `${d.year}-${p(Number(d.month))}-${p(Number(d.day))}T${p(Number(d.hour))}:${p(Number(d.minute))}`,
-        }}
-      />
-    )
-  } else if (t === 'text') {
-    body = (
-      <TextForm
-        initial={String(d.value ?? '')}
-        menuBusy={menuBusyRef}
-        onSubmit={(value) => void setMenuField({ value })}
-      />
-    )
-  } else if (t === 'timer') {
-    body = (
-      <ServiceTimer
-        detail={d as { timer?: { value?: number }[] }}
-        menuBusy={menuBusy}
-        onSetDay={(day, slots) => void setMenuField({ day, slots })}
-        onCopy={(day, mask) => void handleTimerCopy(day, mask)}
-      />
-    )
-  } else if (t === 'time ranges' || t === 'time ranges 2') {
-    const hm = (v: number) =>
-      `${String(Math.floor(v / 60)).padStart(2, '0')}:${String(v % 60).padStart(2, '0')}`
-    const modes = Object.fromEntries(
-      ((d.modes as { mode_id: number; mode_text: string }[]) || []).map((x) => [
-        x.mode_id,
-        x.mode_text,
-      ]),
-    )
-    const ranges =
-      (d.ranges as {
-        start: number
-        stop: number
-        mode: number
-        title: string
-        hint: string
-      }[]) || []
-    body = (
-      <>
-        <p className="muted small">
-          {DAYS[Number(d.day)] || ''} · solo lectura
-        </p>
-        <table>
-          <thead>
-            <tr>
-              <th>Inicio</th>
-              <th>{t === 'time ranges' ? 'Fin' : 'Modo'}</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {ranges.map((x, i) => (
-              <tr key={i}>
-                <td className="num">{hm(x.start)}</td>
-                <td className="num">
-                  {t === 'time ranges' ? hm(x.stop) : modes[x.mode] ?? x.mode}
-                </td>
-                <td>
-                  {x.title} <span className="muted">{x.hint}</span>
-                </td>
-              </tr>
+      )
+      break
+    case 'binary query':
+      body = (
+        <>
+          <div className="lines">
+            {d.lines.map((line, i) => (
+              <p key={i} className="center">
+                {line}
+              </p>
             ))}
-          </tbody>
-        </table>
-      </>
-    )
-  } else {
-    body = <pre className="small">{JSON.stringify(d, null, 1)}</pre>
+          </div>
+          <div
+            className="row"
+            style={{ justifyContent: 'center', gap: 12, marginTop: 16 }}
+          >
+            <button
+              type="button"
+              className={`btn ${d.value === d.yes ? 'primary' : ''}`}
+              style={{ minWidth: 90 }}
+              onClick={() => runAction({ menuId: m.id, action: d.yes })}
+            >
+              Sí
+            </button>
+            <button
+              type="button"
+              className={`btn ${d.value === d.no ? 'primary' : ''}`}
+              style={{ minWidth: 90 }}
+              onClick={() => runAction({ menuId: m.id, action: d.no })}
+            >
+              No
+            </button>
+          </div>
+        </>
+      )
+      break
+    case 'date': {
+      const p = (n: number) => String(n).padStart(2, '0')
+      const { clock } = d
+      const year = d.yearless ? new Date(now).getFullYear() : clock.year
+      const has = clock.day > 0 && clock.month > 0
+      body = (
+        <DateTimeForm
+          hint={d.hint}
+          showClear={d.yearless}
+          onSubmit={(fields) => void setMenuField(fields)}
+          menuBusy={menuBusyRef}
+          initial={{ kind: 'date', value: has ? `${year}-${p(clock.month)}-${p(clock.day)}` : '' }}
+        />
+      )
+      break
+    }
+    case 'time': {
+      const p = (n: number) => String(n).padStart(2, '0')
+      body = (
+        <DateTimeForm
+          onSubmit={(fields) => void setMenuField(fields)}
+          menuBusy={menuBusyRef}
+          showNow
+          initial={{ kind: 'time', value: `${p(d.clock.hour)}:${p(d.clock.minute)}` }}
+        />
+      )
+      break
+    }
+    case 'datetime': {
+      const p = (n: number) => String(n).padStart(2, '0')
+      const { clock } = d
+      body = (
+        <DateTimeForm
+          onSubmit={(fields) => void setMenuField(fields)}
+          menuBusy={menuBusyRef}
+          showNow
+          initial={{
+            kind: 'datetime',
+            value: `${clock.year}-${p(clock.month)}-${p(clock.day)}T${p(clock.hour)}:${p(clock.minute)}`,
+          }}
+        />
+      )
+      break
+    }
+    case 'text':
+      body = (
+        <TextForm
+          initial={d.value}
+          menuBusy={menuBusyRef}
+          onSubmit={(value) => void setMenuField({ value })}
+        />
+      )
+      break
+    case 'timer':
+      body = (
+        <ServiceTimer
+          words={d.words}
+          menuBusy={menuBusy}
+          onSetDay={({ day, slots }) => void setMenuField({ day, slots })}
+          onCopy={(args) => void handleTimerCopy(args)}
+        />
+      )
+      break
+    case 'time ranges': {
+      const hm = (v: number) =>
+        `${String(Math.floor(v / 60)).padStart(2, '0')}:${String(v % 60).padStart(2, '0')}`
+      body = (
+        <>
+          <p className="muted small">
+            {DAYS[d.day] || ''} · solo lectura
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Inicio</th>
+                <th>{d.withStop ? 'Fin' : 'Modo'}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {d.ranges.map((x, i) => (
+                <tr key={i}>
+                  <td className="num">{hm(x.start)}</td>
+                  <td className="num">
+                    {d.withStop ? hm(x.stop) : d.modes[x.mode] ?? x.mode}
+                  </td>
+                  <td>
+                    {x.title} <span className="muted">{x.hint}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )
+      break
+    }
+    case 'raw':
+      body = <pre className="small">{JSON.stringify(d.detail, null, 1)}</pre>
+      break
+    default: {
+      const _exhaustive: never = d
+      void _exhaustive
+    }
   }
 
+  const { back, back_hold, hold_action, forward_hold, forward } = m
   const nav = (
     <div className="menu-nav">
-      {m.back &&
-      !(m.back === 'exit' && menuTrail.length <= 1) &&
+      {back &&
+      !(back === 'exit' && menuTrail.length <= 1) &&
       menuTrail.length <= 1 ? (
         <button
           type="button"
           className="btn"
-          onClick={() => runAction(m.id, m.back!)}
+          onClick={() => runAction({ menuId: m.id, action: back })}
         >
-          {m.back === 'exit' ? (
+          {back === 'exit' ? (
             'Cerrar menú'
           ) : (
             <>
@@ -873,41 +856,41 @@ function MenuScreen({ root }: { root: string }) {
           )}
         </button>
       ) : null}
-      {m.back_hold ? (
+      {back_hold ? (
         <button
           type="button"
           className="btn"
           title="Pulsación larga en Atrás"
-          onClick={() => runAction(m.id, m.back_hold!)}
+          onClick={() => runAction({ menuId: m.id, action: back_hold })}
         >
           Atrás largo
         </button>
       ) : null}
-      {m.hold_action && t !== 'information' ? (
+      {hold_action && d.kind !== 'information' ? (
         <button
           type="button"
           className="btn"
           title="Pulsación larga"
-          onClick={() => runAction(m.id, m.hold_action!)}
+          onClick={() => runAction({ menuId: m.id, action: hold_action })}
         >
           Más opciones
         </button>
       ) : null}
-      {m.forward_hold ? (
+      {forward_hold ? (
         <button
           type="button"
           className="btn"
           title="Pulsación larga en Siguiente"
-          onClick={() => runAction(m.id, m.forward_hold!)}
+          onClick={() => runAction({ menuId: m.id, action: forward_hold })}
         >
           Siguiente largo
         </button>
       ) : null}
-      {m.forward ? (
+      {forward ? (
         <button
           type="button"
           className="btn"
-          onClick={() => runAction(m.id, m.forward!)}
+          onClick={() => runAction({ menuId: m.id, action: forward })}
         >
           Página siguiente <Icon name="chevron" className="mini" />
         </button>
@@ -924,7 +907,7 @@ function MenuScreen({ root }: { root: string }) {
             <button
               type="button"
               className={`crumb ${j < menuTrail.length - 2 ? 'crumb-far' : ''}`}
-              onClick={() => void onCrumb(j, m.id)}
+              onClick={() => void onCrumb({ index: j, menuId: m.id })}
             >
               {prettyTitle(c.entry)}
             </button>
@@ -945,8 +928,7 @@ function MenuScreen({ root }: { root: string }) {
           {prettyTitle(menuTrail[menuTrail.length - 1]?.entry || m.title)}
         </h3>
       </div>
-      {MENU_HELP[unent(m.title)] &&
-      !['string list', 'options'].includes(t) ? (
+      {MENU_HELP[unent(m.title)] && d.kind !== 'string list' && d.kind !== 'options' ? (
         <p className="muted" style={{ margin: '-8px 2px 14px' }}>
           {MENU_HELP[unent(m.title)]}
         </p>
@@ -982,22 +964,33 @@ function DateTimeForm({
 
   const onSave = () => {
     if (menuBusy.current) return
-    if (initial.kind === 'date') {
-      const [y, mo, da] = value.split('-').map(Number)
-      if (!da) return
-      onSubmit({ day: da, month: mo, year: y })
-    } else if (initial.kind === 'time') {
-      const [h, mi] = value.split(':').map(Number)
-      onSubmit({ hour: h, minute: mi })
-    } else {
-      const v = new Date(value)
-      onSubmit({
-        day: v.getDate(),
-        month: v.getMonth() + 1,
-        year: v.getFullYear(),
-        hour: v.getHours(),
-        minute: v.getMinutes(),
-      })
+    switch (initial.kind) {
+      case 'date': {
+        const [y, mo, da] = value.split('-').map(Number)
+        if (!da) return
+        onSubmit({ day: da, month: mo, year: y })
+        break
+      }
+      case 'time': {
+        const [h, mi] = value.split(':').map(Number)
+        onSubmit({ hour: h, minute: mi })
+        break
+      }
+      case 'datetime': {
+        const v = new Date(value)
+        onSubmit({
+          day: v.getDate(),
+          month: v.getMonth() + 1,
+          year: v.getFullYear(),
+          hour: v.getHours(),
+          minute: v.getMinutes(),
+        })
+        break
+      }
+      default: {
+        const _exhaustive: never = initial
+        void _exhaustive
+      }
     }
   }
 

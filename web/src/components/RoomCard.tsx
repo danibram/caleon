@@ -31,7 +31,7 @@ export function RoomCard({ room, S, index = 0 }: RoomCardProps) {
       to={`/room/${room.id}`}
       viewTransition
       className={`card room-card ${isHeating(room) ? 'heating' : ''} ${modeOf(room) === 'off' ? 'is-off' : ''}`}
-      style={{ ['--k' as string]: index }}
+      style={{ '--k': index }}
       data-room={room.id}
       aria-label={`${roomTitle(room)}, ${fmtC(t)} grados, ${st.text}`}
     >

@@ -14,6 +14,7 @@ import { useApp } from '../context/AppContext.tsx'
 import { useRoomChange, useRoomControlGuard } from '../hooks/useRoomChange.ts'
 import { SYSTEM } from '../lib/constants.ts'
 import { es, fmtC, num } from '../lib/format.ts'
+import { isPresent } from '../lib/guards.ts'
 import { Forecast, UnknownModesNote } from '../lib/forecast.tsx'
 import { modeOf, roomById, roomTitle, stateLine } from '../lib/rooms.ts'
 import { vacationPresets } from '../lib/schedule.ts'
@@ -24,11 +25,11 @@ export function RoomView() {
   const roomChange = useRoomChange()
   const { staleData, roomBusy: busySet, blockedToast } = useRoomControlGuard()
 
-  const id = idParam ?? ''
-  const r = S ? roomById(S, id) : undefined
+  const id = Number(idParam)
+  const r = roomById(S, id)
 
   const [roomHours, setRoomHours] = useState(() =>
-    S ? bestRange([6, 24, 168, 720], 24, S) : 24,
+    S ? bestRange({ ranges: [6, 24, 168, 720], want: 24, state: S }) : 24,
   )
 
   if (!S) return null
@@ -50,7 +51,7 @@ export function RoomView() {
   const t = num(r.temperature)
   const st = stateLine(r)
 
-  const actions: ActionItem[] = [
+  const candidates: (ActionItem | null)[] = [
     !isSys && !holiday
       ? {
           tag: 'a',
@@ -129,7 +130,8 @@ export function RoomView() {
           },
         }
       : null,
-  ].filter(Boolean) as ActionItem[]
+  ]
+  const actions = candidates.filter(isPresent)
 
   const houseRows = isSys
     ? S.rooms
@@ -211,7 +213,7 @@ export function RoomView() {
                       blockedToast()
                       return
                     }
-                    if (busySet.has(Number(r.id))) return
+                    if (busySet.has(r.id)) return
                     void roomChange(r.id, { tdelta: -1 })
                   }}
                 >
@@ -228,7 +230,7 @@ export function RoomView() {
                       blockedToast()
                       return
                     }
-                    if (busySet.has(Number(r.id))) return
+                    if (busySet.has(r.id)) return
                     void roomChange(r.id, { tdelta: 1 })
                   }}
                 >

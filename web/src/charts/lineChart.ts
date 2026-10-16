@@ -1,10 +1,12 @@
+import type { MetricPoint, MetricsResponse } from '../api/types.ts'
 import { esc } from '../lib/esc.ts'
+import { isPresent } from '../lib/guards.ts'
 import { iconHtml } from '../lib/iconPaths.ts'
 
 export interface ChartSeries {
   name: string
   color: string
-  points: [number, number | null][]
+  points: MetricPoint[]
   hidden?: boolean
   step?: boolean
   dashed?: boolean
@@ -13,7 +15,11 @@ export interface ChartSeries {
   twinOf?: ChartSeries
 }
 
-export interface LineChartOptions {
+export interface LineChartArgs {
+  svg: SVGSVGElement
+  legend: HTMLElement
+  series: ChartSeries[]
+  hours: number
   yUnit?: string
   lanes?: boolean
   bands?: [number, number][]
@@ -22,13 +28,15 @@ export interface LineChartOptions {
 /** Series the user switched off in a legend stay off across redraws, per chart. */
 export const hiddenSeries: Record<string, Set<string>> = {}
 
-export function lineChart(
-  svg: SVGSVGElement,
-  legendEl: HTMLElement,
-  series: ChartSeries[],
-  hours: number,
-  { yUnit = '', lanes = false, bands = [] }: LineChartOptions = {},
-): void {
+export function lineChart({
+  svg,
+  legend: legendEl,
+  series,
+  hours,
+  yUnit = '',
+  lanes = false,
+  bands = [],
+}: LineChartArgs): void {
   const chartKey = svg.id || svg.getAttribute('data-chart-key') || 'chart'
   const hid = (hiddenSeries[chartKey] = hiddenSeries[chartKey] || new Set())
   series.forEach((s) => {
@@ -44,9 +52,7 @@ export function lineChart(
   const narrow = W < 520
   const P = { l: lanes ? (narrow ? 118 : 190) : 38, r: 12, t: 12, b: 24 }
   const visible = series.filter((s) => !s.hidden)
-  const vals = visible
-    .flatMap((s) => s.points.map((p) => p[1]))
-    .filter((v) => v !== null && v !== undefined) as number[]
+  const vals = visible.flatMap((s) => s.points.map((p) => p[1])).filter(isPresent)
   if (!series.length || (!vals.length && !lanes)) {
     svg.innerHTML = ''
     svg.style.height = 'auto'
@@ -112,7 +118,7 @@ export function lineChart(
   const gap = Math.max(300, (hours * 3600) / 600 * 2.5)
   let lines = '',
     laneLabels = ''
-  if (lanes && !visible.some((s) => s.points.some((p) => p[1]! >= 0.5 && p[0] >= t0))) {
+  if (lanes && !visible.some((s) => s.points.some((p) => p[1] !== null && p[1] >= 0.5 && p[0] >= t0))) {
     svg.innerHTML = ''
     svg.style.height = '0px'
     svg.style.display = 'none'
@@ -131,12 +137,10 @@ export function lineChart(
         start: number | null = null
       s.points.forEach(([ts, v], i) => {
         const next = s.points[i + 1]
-        if (v! >= 0.5 && start === null) start = ts
-        if (
-          start !== null &&
-          (v! < 0.5 || !next || next[0] - ts > gap)
-        ) {
-          const end = v! < 0.5 ? ts : ts + 60
+        const on = v !== null && v >= 0.5
+        if (on && start === null) start = ts
+        if (start !== null && (!on || !next || next[0] - ts > gap)) {
+          const end = on ? ts + 60 : ts
           rects += `<rect x="${x(Math.max(start, t0))}" width="${Math.max(2, x(end) - x(Math.max(start, t0)))}" y="${top + (lh - bh) / 2}" height="${bh}" fill="${s.color}" rx="${bh / 2}"/>`
           start = null
         }
@@ -181,8 +185,10 @@ export function lineChart(
   if (!lanes) {
     const wrap = svg.parentElement
     if (wrap) {
-      let tip = wrap.querySelector('.readout') as HTMLElement | null
-      if (!tip) {
+      const found = wrap.querySelector('.readout')
+      let tip: HTMLElement
+      if (found instanceof HTMLElement) tip = found
+      else {
         tip = document.createElement('div')
         tip.className = 'readout'
         wrap.insertBefore(tip, svg)
@@ -202,28 +208,28 @@ export function lineChart(
         const rows = visible
           .filter((s) => !s.twinOf)
           .map((s) => {
-            let best: [number, number | null] | null = null
+            let best: MetricPoint | null = null
             for (const p of s.points)
               if (p[1] !== null && (best === null || Math.abs(p[0] - t) < Math.abs(best[0] - t)))
                 best = p
             return best && Math.abs(best[0] - t) < gap ? { s, v: best[1] } : null
           })
-          .filter(Boolean) as { s: ChartSeries; v: number | null }[]
-        const sc = svg.querySelector('.scrub') as SVGGElement | null
-        if (!sc) return
+          .filter(isPresent)
+        const sc = svg.querySelector('.scrub')
+        const line = sc?.firstElementChild
+        const dots = sc?.querySelector('.dots')
+        if (!(sc instanceof SVGGElement) || !(line instanceof SVGLineElement) || !dots) return
         sc.style.display = ''
-        const line = sc.firstElementChild as SVGLineElement
         line.setAttribute('x1', String(px))
         line.setAttribute('x2', String(px))
-        const dots = sc.querySelector('.dots')!
         dots.innerHTML = rows
-          .filter(({ v }) => v !== null && v >= lo && v <= hi)
-          .map(
-            ({ s, v }) =>
-              `<circle class="dotc" cx="${px}" cy="${y(v!)}" r="4.5" fill="${s.dashed ? `color-mix(in oklch, ${s.color} 55%, var(--card))` : s.color}"/>`,
+          .flatMap(({ s, v }) =>
+            v !== null && v >= lo && v <= hi
+              ? `<circle class="dotc" cx="${px}" cy="${y(v)}" r="4.5" fill="${s.dashed ? `color-mix(in oklch, ${s.color} 55%, var(--card))` : s.color}"/>`
+              : [],
           )
           .join('')
-        tip!.innerHTML =
+        tip.innerHTML =
           `<b>${new Date(t * 1000).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</b>` +
           rows
             .map(
@@ -235,9 +241,9 @@ export function lineChart(
       svg.onpointermove = move
       svg.onpointerdown = move
       svg.onpointerleave = () => {
-        const sc = svg.querySelector('.scrub') as SVGGElement | null
-        if (sc) sc.style.display = 'none'
-        tip!.innerHTML = idle
+        const sc = svg.querySelector('.scrub')
+        if (sc instanceof SVGGElement) sc.style.display = 'none'
+        tip.innerHTML = idle
       }
     }
   }
@@ -259,26 +265,23 @@ export function lineChart(
           )
           .join('')) + note
   legendEl.onclick = (ev) => {
-    const b = (ev.target as HTMLElement).closest('.lg') as HTMLElement | null
-    if (!b) return
-    const s = series[Number(b.dataset.i)]!
+    const b = ev.target instanceof Element ? ev.target.closest('.lg') : null
+    const s = b && series[Number(b.getAttribute('data-i'))]
+    if (!s) return
     s.hidden = !s.hidden
     if (s.hidden) hid.add(s.name)
     else hid.delete(s.name)
     ;(s.twins || []).forEach((t) => {
       t.hidden = s.hidden
     })
-    lineChart(svg, legendEl, series, hours, { yUnit, lanes, bands })
+    lineChart({ svg, legend: legendEl, series, hours, yUnit, lanes, bands })
   }
 }
 
 /** Time ranges in which any of `keys` was on, from /api/metrics. */
-export function onIntervals(
-  metrics: Record<string, [number, number | null][]>,
-  keys: string[],
-): [number, number][] {
+export function onIntervals(metrics: MetricsResponse, keys: string[]): [number, number][] {
   const pts = keys
-    .flatMap((k) => (metrics[k] || []).map((p) => [p[0], p[1]! >= 0.5] as [number, boolean]))
+    .flatMap((k) => (metrics[k] || []).map((p): [number, boolean] => [p[0], p[1] !== null && p[1] >= 0.5]))
     .sort((a, b) => a[0] - b[0])
   const out: [number, number][] = []
   let start: number | null = null
@@ -294,18 +297,15 @@ export function onIntervals(
 }
 
 /** 5-sample median, then a 0,15° dead band, so the sensor's 0,1° flicker never draws as steps. */
-export function deblip(
-  pts: [number, number | null][],
-  band = 0.15,
-): [number, number | null][] {
-  const med = pts.map((p, i) => {
+export function deblip(pts: MetricPoint[], band = 0.15): MetricPoint[] {
+  const med = pts.map((p, i): MetricPoint => {
     if (p[1] === null) return p
     const w = pts
       .slice(Math.max(0, i - 2), i + 3)
       .map((q) => q[1])
-      .filter((v) => v !== null) as number[]
+      .filter(isPresent)
     w.sort((a, b) => a - b)
-    return [p[0], w[Math.floor(w.length / 2)]!] as [number, number | null]
+    return [p[0], w[Math.floor(w.length / 2)]]
   })
   let last: number | null = null
   return med.map((p) => {

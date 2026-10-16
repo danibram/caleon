@@ -3,8 +3,8 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Banner } from '../components/Banner.tsx'
 import { Icon } from '../components/Icon.tsx'
-import { useApp } from '../context/AppContext.tsx'
-import { es, shortErr } from '../lib/format.ts'
+import { useApp, type Snapshot } from '../context/AppContext.tsx'
+import { errorMessage, es, shortErr } from '../lib/format.ts'
 import { roomTitle } from '../lib/rooms.ts'
 import { segments } from '../lib/schedule.ts'
 
@@ -76,9 +76,9 @@ export function BackupsView() {
   const progressTick = useCallback(() => {
     const tick = setInterval(async () => {
       try {
-        const st = await api<typeof S>('/api/state', { any: true })
-        const done = st?.crawl_done || 0
-        const exp = st?.crawl_expected || 0
+        const st = await api<Snapshot>('/api/state', { any: true })
+        const done = st.crawl_done || 0
+        const exp = st.crawl_expected || 0
         const step = progressRef.current.step
         const bar = progressRef.current.bar
         if (step)
@@ -141,8 +141,8 @@ export function BackupsView() {
                     <span className="muted"> · {c.note}</span>
                   ) : Array.isArray(c.to) ? (
                     <div className="mini-tl">
-                      {miniTimer(c.from as string[])}
-                      {miniTimer(c.to as string[])}
+                      {miniTimer(Array.isArray(c.from) ? c.from : undefined)}
+                      {miniTimer(c.to)}
                     </div>
                   ) : (
                     <div className="muted">
@@ -167,7 +167,15 @@ export function BackupsView() {
     [S],
   )
 
-  const compare = async (name: string, apply: boolean, backup?: unknown) => {
+  const compare = async ({
+    name,
+    apply,
+    backup,
+  }: {
+    name: string
+    apply: boolean
+    backup?: unknown
+  }) => {
     if (busy) return
     setBusy(name)
     if (name !== 'upload.json') setOpen(name)
@@ -203,7 +211,7 @@ export function BackupsView() {
         toast('Copia restaurada')
       }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e)
+      const msg = errorMessage(e)
       const lost = /sin respuesta|no respond/i.test(msg)
       setResult((prev) => ({
         ...prev,
@@ -225,7 +233,7 @@ export function BackupsView() {
                 className="btn"
                 style={{ marginTop: 10 }}
                 data-cmp={name}
-                onClick={() => compare(name, false)}
+                onClick={() => compare({ name, apply: false })}
               >
                 Reintentar
               </button>
@@ -267,7 +275,7 @@ export function BackupsView() {
               toast('Copia hecha')
               setOpen(r.name)
             } catch (e) {
-              toast('No se pudo copiar: ' + (e instanceof Error ? e.message : String(e)), 6000)
+              toast('No se pudo copiar: ' + errorMessage(e), 6000)
             } finally {
               clearInterval(tick)
             }
@@ -317,7 +325,7 @@ export function BackupsView() {
           <div
             key={b.name}
             className={`bk ${open === b.name ? 'open' : ''}`}
-            style={{ ['--k' as string]: k }}
+            style={{ '--k': k }}
           >
             <button
               type="button"
@@ -349,7 +357,7 @@ export function BackupsView() {
                     type="button"
                     className="btn"
                     disabled={!!busy}
-                    onClick={() => compare(b.name, false)}
+                    onClick={() => compare({ name: b.name, apply: false })}
                   >
                     Comparar
                   </button>
@@ -357,7 +365,7 @@ export function BackupsView() {
                     type="button"
                     className="btn"
                     disabled={!!busy}
-                    onClick={() => compare(b.name, true)}
+                    onClick={() => compare({ name: b.name, apply: true })}
                   >
                     Restaurar…
                   </button>
@@ -382,7 +390,7 @@ export function BackupsView() {
                         setOpen(null)
                         await load()
                       } catch (e) {
-                        toast(e instanceof Error ? e.message : String(e))
+                        toast(errorMessage(e))
                       }
                     }}
                   >
@@ -425,8 +433,8 @@ export function BackupsView() {
               const f = ev.target.files?.[0]
               if (!f) return
               try {
-                const backup = JSON.parse(await f.text())
-                await compare('upload.json', false, backup)
+                const backup: unknown = JSON.parse(await f.text())
+                await compare({ name: 'upload.json', apply: false, backup })
               } catch {
                 toast('Ese archivo no es una copia válida', 6000)
               }

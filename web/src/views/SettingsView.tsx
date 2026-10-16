@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ActionRow } from '../components/ActionRow.tsx'
 import { useApp } from '../context/AppContext.tsx'
-import { fmtFirmware } from '../lib/format.ts'
+import { errorMessage, fmtFirmware } from '../lib/format.ts'
 import { applyTheme, type ThemeChoice } from '../lib/theme.ts'
 
 const TRANSPORTS: Record<string, [string, string]> = {
@@ -46,7 +46,7 @@ export function SettingsView() {
         setCfg(c)
         setDraft({ transport: c.transport, host: c.host || '', email: c.email || '' })
       } catch (e) {
-        if (!cancelled) setLoadErr(e instanceof Error ? e.message : String(e))
+        if (!cancelled) setLoadErr(errorMessage(e))
       }
     })()
     return () => {
@@ -216,7 +216,7 @@ export function SettingsView() {
                 })
                 toast('Conectado en modo ' + TRANSPORTS[next.active]![0]!.toLowerCase())
               } catch (e) {
-                toast('No se aplicó: ' + (e instanceof Error ? e.message : String(e)), 7000)
+                toast('No se aplicó: ' + errorMessage(e), 7000)
               }
               setBusy(false)
             }}

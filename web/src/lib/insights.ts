@@ -1,7 +1,7 @@
 import type { HistoryResponse } from '../api/types.ts'
 import type { Room, Snapshot } from '../context/AppContext.tsx'
 import { modeOf } from './rooms.ts'
-import { nextChange } from './schedule.ts'
+import { nextChange, type NextChange } from './schedule.ts'
 
 export type HomeInsights = {
   offSince?: number
@@ -43,10 +43,14 @@ export function insights(hist: HistoryResponse | null, S: Snapshot | null): Home
   return out
 }
 
-export function upcomingChangeToday(rooms: Room[]) {
-  return rooms
-    .filter((r) => modeOf(r) !== 'off' && !r.vacation)
-    .map((r) => ({ r, nc: nextChange(r) }))
-    .filter((x) => x.nc && x.nc.mode && x.nc.dayOffset === 0)
-    .sort((a, b) => (a.nc!.slot ?? 0) - (b.nc!.slot ?? 0))[0]
+export type UpcomingChange = { r: Room; nc: Extract<NextChange, { kind: 'change' }> }
+
+export function upcomingChangeToday(rooms: Room[]): UpcomingChange | undefined {
+  const out: UpcomingChange[] = []
+  for (const r of rooms) {
+    if (modeOf(r) === 'off' || r.vacation) continue
+    const nc = nextChange(r)
+    if (nc?.kind === 'change' && nc.dayOffset === 0) out.push({ r, nc })
+  }
+  return out.sort((a, b) => a.nc.slot - b.nc.slot)[0]
 }

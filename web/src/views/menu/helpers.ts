@@ -2,6 +2,7 @@ import { ROOM_TYPES } from '../../lib/constants'
 import { es as esFormat } from '../../lib/format'
 
 export { esFormat as es }
+import type { IconName } from '../../lib/iconPaths'
 import { roomTitle, sensorRoom, typeLabel, zoneRooms } from '../../lib/rooms'
 import type { Snapshot } from '../../context/AppContext'
 
@@ -49,7 +50,7 @@ export type MenuTrailItem = { id: string; title: string; entry: string }
 export const entryPath = (menuTrail: MenuTrailItem[]) =>
   menuTrail.slice(1).map((x) => x.entry)
 
-export const MENU_ICON: Record<string, string> = {
+export const MENU_ICON: Record<string, IconName> = {
   Idioma: 'globe',
   'Fecha & Hora': 'clock',
   Ajustes: 'gear',
@@ -96,11 +97,15 @@ export const INFO_HEAD: Record<string, string> = {
   'Bomba circuito 116.1': 'Bomba del circuito',
 }
 
-export function infoLabel(
-  label: string,
-  value: string,
-  S: Snapshot | null,
-): [string, string] {
+export function infoLabel({
+  label,
+  value,
+  S,
+}: {
+  label: string
+  value: string
+  S: Snapshot | null
+}): [string, string] {
   const zr = zoneRooms(S)
   let l = label
   let v = value

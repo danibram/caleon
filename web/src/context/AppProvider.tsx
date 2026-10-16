@@ -1,20 +1,16 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
+import { api as request, type ApiOptions } from '../api/client.ts'
 import { AskDialog, type AskUiState } from '../components/AskDialog.tsx'
 import { useNow } from '../hooks/useNow.ts'
 import { shortErr } from '../lib/format.ts'
-import { AppContext, type ApiOpts, type AskOptions } from './AppContext.tsx'
+import { AppContext, type AskOptions } from './AppContext.tsx'
 
 import type { Snapshot } from '../api/types.ts'
 
 const STALE = new Promise<never>(() => {})
 
-async function fetchState(): Promise<Snapshot> {
-  const r = await fetch('/api/state')
-  const data = (await r.json().catch(() => ({}))) as Snapshot & { error?: string }
-  if (!r.ok) throw new Error(data.error || r.statusText)
-  return data
-}
+const fetchState = () => request<Snapshot>('/api/state')
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
@@ -65,21 +61,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTimeout(() => t.remove(), ms)
   }, [])
 
-  const api = useCallback(async <T,>(path: string, opts: ApiOpts = {}): Promise<T> => {
+  // a reply for a view the user already left neither resolves nor rejects
+  const api = useCallback(async <T,>(path: string, opts: ApiOptions = {}): Promise<T> => {
     const seq = navGenRef.current
-    const init: RequestInit = {
-      method: opts.method || (opts.body !== undefined ? 'POST' : 'GET'),
-      headers: {},
-    }
-    if (opts.body !== undefined) {
-      ;(init.headers as Record<string, string>)['Content-Type'] = 'application/json'
-      init.body = JSON.stringify(opts.body)
-    }
-    const r = await fetch(path, init)
-    const data = await r.json().catch(() => ({}))
-    if (!opts.any && seq !== navGenRef.current) return STALE as Promise<T>
-    if (!r.ok) throw new Error((data as { error?: string }).error || r.statusText)
-    return data as T
+    const [res] = await Promise.allSettled([request<T>(path, opts)])
+    if (!opts.any && seq !== navGenRef.current) return STALE
+    if (res.status === 'rejected') throw res.reason
+    return res.value
   }, [])
 
   const rereadSoon = useCallback(() => {
@@ -103,11 +91,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const ask = useCallback((opts: AskOptions) => {
     return new Promise<string | boolean | null>((resolve) => {
       askResolve.current = resolve
-      setAskUi({
-        ...opts,
-        input: opts.input !== false,
-        inputValue: opts.value ?? '',
-      })
+      setAskUi({ ...opts, inputValue: opts.input === false ? '' : (opts.value ?? '') })
       // two frames: the dialog content has to be committed before showModal() focuses it
       requestAnimationFrame(() => requestAnimationFrame(() => dlgRef.current?.showModal()))
     })
