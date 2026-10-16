@@ -38,6 +38,8 @@ jobs:
       - run: pnpm build
 
   docker:
+    # pushes to main publish the image through docker.yml; here only pull requests get a build check
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

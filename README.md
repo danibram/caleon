@@ -115,27 +115,29 @@ menu actions) are sent once, as in the other modes.
 
 ## Install on a NAS
 
-With the code on the NAS:
+Every push to `main` publishes the image at `ghcr.io/danibram/caleon` for `linux/amd64` and `linux/arm64`
+(tags `latest`, `vX.Y.Z` for releases and `sha-<commit>`). The NAS only needs the compose file and a
+`data/` folder next to it:
 
 ```sh
-docker compose up -d --build
+mkdir caleon && cd caleon
+curl -O https://raw.githubusercontent.com/danibram/caleon/main/docker-compose.yml
+docker compose up -d
+# to update later
+docker compose pull && docker compose up -d
 ```
 
-Or build on another machine and copy the image over (change the platform if your NAS is ARM):
+To build the image yourself instead (a change of your own, or the SDK mode with the SDK copied to
+`vendor/nabto4`, amd64 only):
 
 ```sh
-docker build --platform linux/amd64 -t caleon:latest .
-docker save caleon:latest | gzip > caleon-amd64.tar.gz
-# on the NAS
-docker load < caleon-amd64.tar.gz
-docker compose up -d        # with docker-compose.yml and a data/ folder next to it
+docker build -t ghcr.io/danibram/caleon:latest .                   # --platform linux/arm64 for an ARM NAS
+docker build --platform linux/amd64 --build-arg FEATURES=nabto-sdk -t ghcr.io/danibram/caleon:latest .
+docker save ghcr.io/danibram/caleon:latest | gzip > caleon.tar.gz  # then docker load < caleon.tar.gz on the NAS
 ```
 
-To include the SDK mode as well (amd64 only, with the SDK copied to `vendor/nabto4`):
-
-```sh
-docker build --platform linux/amd64 --build-arg FEATURES=nabto-sdk -t caleon:latest .
-```
+With the code on the NAS, `docker compose up -d --build` after uncommenting `build: .` in
+`docker-compose.yml` does the same.
 
 The web UI is at `http://<nas-ip>:8088`. It has no user or password: anyone on your network can change the
 heating. If you expose it outside your home, put it behind an authenticating proxy or a VPN.
@@ -197,7 +199,7 @@ To talk to the thermostat from another Rust project, depend on the library alone
 
 ```toml
 [dependencies]
-caleon = { git = "https://github.com/<user>/caleon" }   # or path = "../caleon/crates/caleon"
+caleon = { git = "https://github.com/danibram/caleon" }   # or path = "../caleon/crates/caleon"
 ```
 
 ```rust
@@ -243,7 +245,8 @@ without it the thermostat is not found. To try the SDK mode, build for Intel and
 `cargo run -p caleon-server --target x86_64-apple-darwin --features nabto-sdk`.
 
 CI (`.github/workflows/ci.yml`) runs `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test`,
-`pnpm lint`, `pnpm build` and builds the Docker image.
+`pnpm lint` and `pnpm build`, and checks the Docker build on pull requests. `docker.yml` publishes the
+multi-arch image to GitHub Container Registry on every push to `main` and on `v*` tags.
 
 ## API
 

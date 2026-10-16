@@ -114,27 +114,29 @@ arrancar con `TRANSPORT=sdk`. La primera vez el SDK crea un perfil autofirmado (
 
 ## Instalar en el NAS
 
-Con el código en el NAS:
+Cada push a `main` publica la imagen en `ghcr.io/danibram/caleon` para `linux/amd64` y `linux/arm64`
+(etiquetas `latest`, `vX.Y.Z` en las versiones y `sha-<commit>`). En el NAS solo hacen falta el archivo
+compose y una carpeta `data/` al lado:
 
 ```sh
-docker compose up -d --build
+mkdir caleon && cd caleon
+curl -O https://raw.githubusercontent.com/danibram/caleon/main/docker-compose.yml
+docker compose up -d
+# para actualizar más adelante
+docker compose pull && docker compose up -d
 ```
 
-O construyendo en otra máquina y copiando la imagen (cambia la plataforma si tu NAS es ARM):
+Para construir la imagen tú mismo (un cambio propio, o el modo SDK con el SDK copiado en `vendor/nabto4`,
+solo amd64):
 
 ```sh
-docker build --platform linux/amd64 -t caleon:latest .
-docker save caleon:latest | gzip > caleon-amd64.tar.gz
-# en el NAS
-docker load < caleon-amd64.tar.gz
-docker compose up -d        # con docker-compose.yml y una carpeta data/ al lado
+docker build -t ghcr.io/danibram/caleon:latest .                   # --platform linux/arm64 para un NAS ARM
+docker build --platform linux/amd64 --build-arg FEATURES=nabto-sdk -t ghcr.io/danibram/caleon:latest .
+docker save ghcr.io/danibram/caleon:latest | gzip > caleon.tar.gz  # y docker load < caleon.tar.gz en el NAS
 ```
 
-Para incluir también el modo SDK (solo amd64, con el SDK copiado en `vendor/nabto4`):
-
-```sh
-docker build --platform linux/amd64 --build-arg FEATURES=nabto-sdk -t caleon:latest .
-```
+Con el código en el NAS, `docker compose up -d --build` hace lo mismo tras descomentar `build: .` en
+`docker-compose.yml`.
 
 La web queda en `http://<ip-del-nas>:8088`. No tiene usuario ni contraseña: cualquiera en tu red puede
 cambiar la calefacción. Si la expones fuera de casa, ponla detrás de un proxy con autenticación o de una VPN.
@@ -198,7 +200,7 @@ Para hablar con el termostato desde otro proyecto en Rust basta con la librería
 
 ```toml
 [dependencies]
-caleon = { git = "https://github.com/<usuario>/caleon" }   # o path = "../caleon/crates/caleon"
+caleon = { git = "https://github.com/danibram/caleon" }   # o path = "../caleon/crates/caleon"
 ```
 
 ```rust
@@ -245,7 +247,9 @@ encuentra el termostato. Para probar el modo SDK hay que compilar para Intel y c
 `cargo run -p caleon-server --target x86_64-apple-darwin --features nabto-sdk`.
 
 La integración continua (`.github/workflows/ci.yml`) pasa `cargo fmt --check`, `cargo clippy -D warnings`,
-`cargo test`, `pnpm lint`, `pnpm build` y construye la imagen Docker.
+`cargo test`, `pnpm lint` y `pnpm build`, y comprueba la build de Docker en los pull requests. `docker.yml`
+publica la imagen multiarquitectura en GitHub Container Registry en cada push a `main` y en las etiquetas
+`v*`.
 
 ## API
 
