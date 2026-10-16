@@ -1,0 +1,78 @@
+# Example stack: caleon as a headless service (no web UI, no history) feeding Home Assistant over
+# MQTT and Prometheus + Grafana. Copy this folder to the NAS and run `docker compose up -d`.
+#
+#   Home Assistant  http://<nas-ip>:8123   (first start asks you to create a user; the MQTT
+#                                           integration points at broker "mosquitto", port 1883)
+#   Grafana         http://<nas-ip>:3000   admin / admin, dashboard "°CALEON" already provisioned
+#   Prometheus      http://<nas-ip>:9090
+#
+# `./test.sh` brings the stack up and checks every piece end to end.
+
+services:
+  caleon:
+    image: ghcr.io/danibram/caleon:latest
+    container_name: caleon
+    restart: unless-stopped
+    network_mode: host # UDP broadcast discovery of the thermostat
+    environment:
+      BIND: "0.0.0.0:8088"
+      WEB: "0" # only the API and /metrics
+      HISTORY: "0" # no SQLite history
+      BACKUP_HOURS: "0" # no configuration backups
+      PROMETHEUS: "1"
+      MQTT_URL: "mqtt://localhost:1883" # mosquitto below, published on the host
+      # MQTT_TOPIC: "caleon"
+      # MQTT_DISCOVERY_PREFIX: "homeassistant"
+      # CALEON_HOST: "192.168.1.50"
+    volumes:
+      - ./data/caleon:/data
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./data/mosquitto:/mosquitto/data
+
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    restart: unless-stopped
+    ports:
+      - "8123:8123"
+    environment:
+      TZ: "Europe/Madrid"
+    volumes:
+      - ./data/homeassistant:/config
+    depends_on:
+      - mosquitto
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # caleon runs on the host network
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./data/prometheus:/prometheus
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: "admin"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../grafana:/var/lib/grafana/dashboards:ro
+      - ./data/grafana:/var/lib/grafana
+    depends_on:
+      - prometheus

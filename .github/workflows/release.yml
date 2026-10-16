@@ -1,0 +1,82 @@
+name: Release
+
+# A tag vX.Y.Z builds the server for Linux (x86_64 and arm64, static musl) and macOS (Apple Silicon),
+# and publishes a GitHub release with the archives, their checksums and generated notes. The Docker
+# workflow tags the image X.Y.Z from the same push.
+
+on:
+  push:
+    tags: ["v*"]
+
+env:
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            runner: ubuntu-latest
+            name: linux-amd64
+          - target: aarch64-unknown-linux-musl
+            runner: ubuntu-24.04-arm
+            name: linux-arm64
+          - target: aarch64-apple-darwin
+            runner: macos-latest
+            name: macos-arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check that the tag matches Cargo.toml
+        run: |
+          v=$(grep -m1 '^version' Cargo.toml | cut -d '"' -f2)
+          [ "v$v" = "${GITHUB_REF_NAME}" ] || { echo "tag ${GITHUB_REF_NAME} but Cargo.toml says $v"; exit 1; }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable && cd web && pnpm install --frozen-lockfile && pnpm build
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - run: cargo build --release -p caleon-server --target ${{ matrix.target }}
+        env:
+          CC: ${{ runner.os == 'Linux' && 'musl-gcc' || 'cc' }}
+      - name: Package
+        run: |
+          name=caleon-${GITHUB_REF_NAME}-${{ matrix.name }}
+          mkdir -p "$name"
+          cp target/${{ matrix.target }}/release/caleon README.md README.es.md LICENSE docker-compose.yml "$name/"
+          tar -czf "$name.tar.gz" "$name"
+          shasum -a 256 "$name.tar.gz" > "$name.tar.gz.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: caleon-*.tar.gz*
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - run: ls -la dist
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          body: |
+            Docker image: `ghcr.io/danibram/caleon:${{ github.ref_name }}` (also `latest`), for linux/amd64 and linux/arm64.
+            Binaries below are static for Linux (amd64, arm64) and native for macOS on Apple Silicon; each archive
+            carries the README and the `docker-compose.yml`.

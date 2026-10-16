@@ -146,6 +146,10 @@ docker save ghcr.io/danibram/caleon:latest | gzip > caleon.tar.gz  # y docker lo
 Con el código en el NAS, `docker compose up -d --build` hace lo mismo tras descomentar `build: .` en
 `docker-compose.yml`.
 
+Sin Docker, las [releases](https://github.com/danibram/caleon/releases) traen binarios estáticos para Linux
+(amd64, arm64) y macOS (Apple Silicon): descomprimir y `DATA_DIR=./data ./caleon`. Cada release etiqueta
+también la imagen como `ghcr.io/danibram/caleon:X.Y.Z`.
+
 La web queda en `http://<ip-del-nas>:8088`. No tiene usuario ni contraseña: cualquiera en tu red puede
 cambiar la calefacción. Si la expones fuera de casa, ponla detrás de un proxy con autenticación o de una VPN.
 
@@ -169,6 +173,15 @@ que en el Mac el contenedor no encuentra el termostato. En un NAS Linux no pasa.
 | `BACKUP_HOURS` | `24` | cada cuánto se revisa la configuración; solo se guarda copia si cambió algo. `0` lo desactiva |
 | `BACKUP_KEEP` | `30` | copias automáticas que se conservan |
 | `PROMETHEUS` | `1` | `/metrics` en formato Prometheus; `0` lo desactiva |
+| `WEB` | `1` | con `0` solo sirve la API y `/metrics`, sin interfaz web |
+| `HISTORY` | `1` | con `0` no guarda muestras en SQLite (las gráficas quedan vacías) |
+| `MQTT_URL` | (vacío) | `mqtt://usuario:clave@host:1883` activa la integración con Home Assistant |
+| `MQTT_TOPIC` | `caleon` | base de los topics MQTT |
+| `MQTT_DISCOVERY_PREFIX` | `homeassistant` | prefijo de descubrimiento de Home Assistant |
+
+Con `WEB=0`, `HISTORY=0` y `BACKUP_HOURS=0` el servidor se queda en un servicio que lee el termostato una vez
+por minuto y alimenta Prometheus y Home Assistant. `contrib/stack/docker-compose.yml` lo arranca así junto a
+Mosquitto, Home Assistant, Prometheus y Grafana, y `contrib/stack/test.sh` comprueba toda la cadena.
 | `READ_ONLY` | (vacío) | con `1`, la web lo enseña todo pero el servidor rechaza cualquier cambio en el termostato (sirve para una pantalla de consulta o para hacer pruebas) |
 
 El termostato trata cada consulta remota como si alguien lo estuviera usando y mantiene la pantalla encendida.
@@ -191,6 +204,22 @@ ni Seleccionar red (lanza un escaneo WiFi). Tarda alrededor de un minuto.
 La restauración escribe nombres de habitación y horarios. Los ajustes del menú experto solo se comparan, porque el
 equipo no permite escribirlos directamente: se cambian paso a paso con +/− desde Experto, y la comparación te dice
 qué pantallas difieren.
+
+## Home Assistant
+
+Con `MQTT_URL` definido, el servidor se conecta a un broker MQTT (el add-on Mosquitto, o el de
+`contrib/stack`) y publica los mensajes de descubrimiento de Home Assistant, así que HA lo crea todo solo bajo
+un dispositivo "Caleon": una entidad `climate` por habitación (temperatura actual, objetivo en pasos de
+0,5 °C, `heat`/`off`, presets `eco` y `comfort`; sin preset es Normal), sensores de temperatura y humedad, un
+sensor "calentando" por habitación, la bomba del circuito, la demanda a la caldera, un selector "Toda la casa"
+para el modo global y la hora de la última lectura. El estado queda retenido y se renueva tras cada lectura;
+los cambios hechos en HA van al termostato y se releen para confirmarlos. El termostato solo mueve la consigna
+de medio en medio grado, así que un objetivo nuevo se envía como una serie de pasos.
+
+Topics bajo `MQTT_TOPIC`: `room/<id>/{mode,preset,temperature,humidity,target,heating,action}`,
+`room/<id>/set/{mode,preset,temperature}`, `house/mode`, `house/set/mode`, `pump`, `boiler`, `last_read` y
+`status` (`online`/`offline`, que pone el broker si el servidor cae). Cualquier otra cosa que hable MQTT
+(Node-RED, openHAB) puede usar los mismos topics. Con `READ_ONLY=1` se ignoran los comandos.
 
 ## Prometheus y Grafana
 
@@ -289,7 +318,8 @@ encuentra el termostato. Para probar el modo SDK hay que compilar para Intel y c
 La integración continua (`.github/workflows/ci.yml`) pasa `cargo fmt --check`, `cargo clippy -D warnings`,
 `cargo test`, `pnpm lint` y `pnpm build`, y comprueba la build de Docker en los pull requests. `docker.yml`
 publica la imagen multiarquitectura en GitHub Container Registry en cada push a `main` y en las etiquetas
-`v*`.
+`v*`. `release.yml` convierte una etiqueta `vX.Y.Z` (igual que la versión de `Cargo.toml`) en una release de
+GitHub con los binarios y notas generadas.
 
 ## API
 

@@ -59,7 +59,7 @@ static REREAD_GEN: AtomicU64 = AtomicU64::new(0);
 /// After a change, reread everything a few more times in the background: valves, pump and the
 /// other rooms react seconds later. Writes in a row (a week of schedule, several taps on +)
 /// share one series of rereads. The poller keeps its own one-minute rhythm.
-fn reread_later(app: &AppState, now: bool) {
+pub(crate) fn reread_later(app: &AppState, now: bool) {
     let gen = REREAD_GEN.fetch_add(1, Ordering::SeqCst) + 1;
     let app = app.clone();
     tokio::spawn(async move {
@@ -90,8 +90,7 @@ async fn blocking<T: Send + 'static>(
 }
 
 pub fn router(app: AppState) -> Router {
-    Router::new()
-        .route("/", get(index))
+    let api = Router::new()
         .route("/icons/:name", get(icon))
         .route("/metrics", get(prometheus))
         .route("/api/state", get(state))
@@ -111,9 +110,21 @@ pub fn router(app: AppState) -> Router {
         .route("/api/settings", get(settings_get).post(settings_set))
         .route("/api/backups", get(backups_list).post(backup_create))
         .route("/api/backups/:name", get(backup_get).delete(backup_delete))
-        .route("/api/backups/:name/restore", post(backup_restore))
-        .fallback(get(static_file))
-        .with_state(app)
+        .route("/api/backups/:name/restore", post(backup_restore));
+    let router = if app.web {
+        api.route("/", get(index)).fallback(get(static_file))
+    } else {
+        api.fallback(get(no_web))
+    };
+    router.with_state(app)
+}
+
+async fn no_web() -> Response {
+    (
+        StatusCode::NOT_FOUND,
+        "web UI disabled (WEB=0); the API is under /api and Prometheus metrics under /metrics",
+    )
+        .into_response()
 }
 
 async fn index() -> impl IntoResponse {

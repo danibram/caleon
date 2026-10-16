@@ -3,6 +3,7 @@
 
 pub mod app;
 pub mod connection;
+pub mod mqtt;
 pub mod store;
 pub mod web;
 
@@ -28,6 +29,10 @@ pub async fn run() -> Result<()> {
     let poll: u64 = env("POLL_SECONDS", "60").parse().context("POLL_SECONDS")?;
     let backup_hours: u64 = env("BACKUP_HOURS", "24").parse().context("BACKUP_HOURS")?;
     let backup_keep: usize = env("BACKUP_KEEP", "30").parse().context("BACKUP_KEEP")?;
+    let on = |key: &str, default: &str| matches!(env(key, default).as_str(), "1" | "true" | "yes");
+    // WEB=0 and HISTORY=0 leave a service that only reads the device and feeds Prometheus or MQTT
+    let (web, history) = (on("WEB", "1"), on("HISTORY", "1"));
+    let mqtt = mqtt::Config::from_env()?;
     std::fs::create_dir_all(&data_dir)?;
 
     let settings = connection::Settings::load(&data_dir);
@@ -54,8 +59,9 @@ pub async fn run() -> Result<()> {
         crawl_done: std::sync::atomic::AtomicUsize::new(0),
         crawl_expected: std::sync::atomic::AtomicUsize::new(0),
         backup_hours,
-        read_only: matches!(env("READ_ONLY", "0").as_str(), "1" | "true" | "yes"),
-        prometheus: matches!(env("PROMETHEUS", "1").as_str(), "1" | "true" | "yes"),
+        read_only: on("READ_ONLY", "0"),
+        prometheus: on("PROMETHEUS", "1"),
+        web,
         schema,
         conn: RwLock::new((settings, found)),
     });
@@ -80,7 +86,7 @@ pub async fn run() -> Result<()> {
         tokio::spawn(async move {
             loop {
                 let a = app.clone();
-                let r = tokio::task::spawn_blocking(move || a.refresh(true)).await;
+                let r = tokio::task::spawn_blocking(move || a.refresh(history)).await;
                 if let Ok(Err(e)) | Err(e) = r.map_err(anyhow::Error::from) {
                     tracing::warn!("refresh failed: {e:#}");
                     app.snapshot.write().unwrap().error = Some(format!("{e:#}"));
@@ -88,6 +94,17 @@ pub async fn run() -> Result<()> {
                 tokio::time::sleep(Duration::from_secs(poll)).await;
             }
         });
+    }
+
+    if let Some(cfg) = mqtt {
+        tracing::info!(
+            "mqtt: publishing to {}:{} under {}/ (discovery prefix {})",
+            cfg.host,
+            cfg.port,
+            cfg.base,
+            cfg.discovery_prefix
+        );
+        mqtt::spawn(app.clone(), cfg);
     }
 
     if backup_hours > 0 {
@@ -117,7 +134,11 @@ pub async fn run() -> Result<()> {
     if app.read_only {
         tracing::warn!("READ_ONLY: writes to the thermostat are disabled");
     }
-    tracing::info!("web UI on http://{bind}");
+    if web {
+        tracing::info!("web UI on http://{bind}");
+    } else {
+        tracing::info!("WEB=0: API and /metrics on http://{bind}, no web UI");
+    }
     axum::serve(listener, web::router(app))
         .with_graceful_shutdown(async {
             let mut term =

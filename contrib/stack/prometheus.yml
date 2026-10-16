@@ -1,0 +1,7 @@
+global:
+  scrape_interval: 60s # the server reads the thermostat once a minute
+
+scrape_configs:
+  - job_name: caleon
+    static_configs:
+      - targets: ["host.docker.internal:8088"]

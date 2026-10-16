@@ -147,6 +147,10 @@ docker save ghcr.io/danibram/caleon:latest | gzip > caleon.tar.gz  # then docker
 With the code on the NAS, `docker compose up -d --build` after uncommenting `build: .` in
 `docker-compose.yml` does the same.
 
+Without Docker, the [releases](https://github.com/danibram/caleon/releases) carry static binaries for Linux
+(amd64, arm64) and macOS (Apple Silicon): unpack, then `DATA_DIR=./data ./caleon`. Each release also tags
+the image as `ghcr.io/danibram/caleon:X.Y.Z`.
+
 The web UI is at `http://<nas-ip>:8088`. It has no user or password: anyone on your network can change the
 heating. If you expose it outside your home, put it behind an authenticating proxy or a VPN.
 
@@ -170,6 +174,15 @@ the container cannot find the thermostat. A Linux NAS has no such problem.
 | `BACKUP_HOURS` | `24` | how often the configuration is checked; a backup is written only when something changed. `0` disables it |
 | `BACKUP_KEEP` | `30` | automatic backups to keep |
 | `PROMETHEUS` | `1` | `/metrics` in Prometheus format; `0` turns it off |
+| `WEB` | `1` | `0` serves only the API and `/metrics`, no web UI |
+| `HISTORY` | `1` | `0` stores no samples in SQLite (charts stay empty) |
+| `MQTT_URL` | (empty) | `mqtt://user:password@host:1883` turns on the Home Assistant integration |
+| `MQTT_TOPIC` | `caleon` | base of the MQTT topics |
+| `MQTT_DISCOVERY_PREFIX` | `homeassistant` | Home Assistant's discovery prefix |
+
+With `WEB=0`, `HISTORY=0` and `BACKUP_HOURS=0` the server is a plain service that reads the thermostat once a
+minute and feeds Prometheus and Home Assistant. `contrib/stack/docker-compose.yml` runs it that way next to
+Mosquitto, Home Assistant, Prometheus and Grafana, and `contrib/stack/test.sh` checks the whole chain.
 | `READ_ONLY` | (empty) | with `1`, the web shows everything but the server refuses every change to the thermostat (for a display-only screen or for testing) |
 
 The thermostat treats every remote query as someone using it and keeps its screen lit. With one read per
@@ -191,6 +204,22 @@ network (that one starts a WiFi scan). It takes about a minute.
 A restore writes room names and schedules. Expert menu settings are only compared, because the device does not
 allow writing them directly: they are changed step by step with +/− from Expert, and the comparison tells you
 which screens differ.
+
+## Home Assistant
+
+With `MQTT_URL` set, the server talks to an MQTT broker (the Mosquitto add-on, or the one in
+`contrib/stack`) and publishes Home Assistant discovery messages, so HA creates everything on its own under
+one "Caleon" device: a `climate` entity per room (current temperature, target in 0.5 °C steps, `heat`/`off`,
+presets `eco` and `comfort`; no preset is Normal), temperature and humidity sensors, a "heating" sensor per
+room, the circuit pump, the boiler demand, a "Toda la casa" select for the whole-house mode and the time of
+the last read. State is retained and refreshed after every read; changes made in HA go back to the
+thermostat and are read back for confirmation. The thermostat only moves the setpoint in half-degree steps,
+so a new target is sent as a series of steps.
+
+Topics under `MQTT_TOPIC`: `room/<id>/{mode,preset,temperature,humidity,target,heating,action}`,
+`room/<id>/set/{mode,preset,temperature}`, `house/mode`, `house/set/mode`, `pump`, `boiler`, `last_read`
+and `status` (`online`/`offline`, set by the broker when the server drops). Anything else that speaks MQTT
+(Node-RED, openHAB) can use the same topics. `READ_ONLY=1` ignores commands.
 
 ## Prometheus and Grafana
 
@@ -285,7 +314,9 @@ without it the thermostat is not found. To try the SDK mode, build for Intel and
 
 CI (`.github/workflows/ci.yml`) runs `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test`,
 `pnpm lint` and `pnpm build`, and checks the Docker build on pull requests. `docker.yml` publishes the
-multi-arch image to GitHub Container Registry on every push to `main` and on `v*` tags.
+multi-arch image to GitHub Container Registry on every push to `main` and on `v*` tags. `release.yml` turns
+a `vX.Y.Z` tag (matching the version in `Cargo.toml`) into a GitHub release with the binaries and generated
+notes.
 
 ## API
 

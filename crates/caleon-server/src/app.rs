@@ -30,6 +30,8 @@ pub struct App {
     pub read_only: bool,
     /// PROMETHEUS=0 turns off the /metrics exposition.
     pub prometheus: bool,
+    /// WEB=0 serves only the API and /metrics, not the web UI.
+    pub web: bool,
     pub schema: Arc<Schema>,
     /// Current connection settings and where the thermostat was found.
     pub conn: RwLock<(Settings, Found)>,
