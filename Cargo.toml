@@ -1,0 +1,39 @@
+[package]
+name = "caleon"
+version = "0.1.0"
+edition = "2021"
+description = "Local web server to monitor and control a SOREL °CALEON thermostat over Nabto 4"
+authors = ["Daniel Biedma <info@dbr.io>"]
+license = "MIT"
+readme = "README.md"
+keywords = ["sorel", "caleon", "thermostat", "nabto", "home-automation"]
+rust-version = "1.82"
+
+[lib]
+name = "caleon"
+path = "src/lib.rs"
+
+[[bin]]
+name = "caleon"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+axum = "0.7"
+roxmltree = "0.20"
+rust-embed = "8"
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "signal"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+ts-rs = "10"
+
+[features]
+# Optional transport through the closed-source Nabto 4 client SDK (x86_64 only).
+nabto-sdk = []
+
+[profile.release]
+strip = true
+lto = "thin"

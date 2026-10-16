@@ -1,0 +1,20 @@
+services:
+  caleon:
+    image: caleon:latest
+    build: .
+    container_name: caleon
+    restart: unless-stopped
+    # host network lets the server find the thermostat by UDP broadcast. With CALEON_HOST set,
+    # a normal bridge network with "ports: [8088:8088]" also works.
+    network_mode: host
+    environment:
+      BIND: "0.0.0.0:8088"
+      TZ: "Europe/Madrid"
+      # CALEON_HOST: "192.168.1.50"        # fixed IP instead of broadcast discovery
+      # TRANSPORT: "udp"                   # initial mode (udp/session/sdk); later changed in Ajustes
+      # CALEON_EMAIL: "tu-correo@ejemplo.com"  # only for the "session" mode
+      # POLL_SECONDS: "60"
+      # BACKUP_HOURS: "24"
+      # BACKUP_KEEP: "30"
+    volumes:
+      - ./data:/data

@@ -1,0 +1,715 @@
+//! HTTP API and the embedded web UI.
+
+use crate::app::{now, App};
+use crate::device::{self, RoomChange, ROOM_MODES, SYSTEM_ROOM};
+use axum::extract::{Path, Query, State};
+use axum::http::{header, StatusCode};
+use axum::response::{IntoResponse, Response};
+use axum::routing::{get, post, put};
+use axum::{Json, Router};
+use serde::Deserialize;
+use serde_json::{json, Value};
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
+
+type AppState = Arc<App>;
+
+pub struct ApiError(StatusCode, String);
+
+impl IntoResponse for ApiError {
+    fn into_response(self) -> Response {
+        (self.0, Json(json!({"error": self.1}))).into_response()
+    }
+}
+
+impl From<anyhow::Error> for ApiError {
+    fn from(e: anyhow::Error) -> Self {
+        ApiError(StatusCode::BAD_GATEWAY, e.to_string())
+    }
+}
+
+fn guard_write(app: &App) -> Result<(), ApiError> {
+    if app.read_only {
+        Err(ApiError(
+            StatusCode::FORBIDDEN,
+            "Modo solo lectura: este servidor no puede cambiar el termostato".into(),
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+/// Menu actions that only move between screens (allowed in read-only mode).
+fn is_navigation(action: &str) -> bool {
+    action.is_empty()
+        || action.starts_with("goto:")
+        || matches!(action, "back" | "forward" | "exit" | "status")
+}
+
+fn bad(msg: impl Into<String>) -> ApiError {
+    ApiError(StatusCode::BAD_REQUEST, msg.into())
+}
+
+type ApiResult = Result<Json<Value>, ApiError>;
+
+/// Bumped by every write: a newer write takes over the rereads of the previous one.
+static REREAD_GEN: AtomicU64 = AtomicU64::new(0);
+
+/// After a change, reread everything a few more times in the background: valves, pump and the
+/// other rooms react seconds later. Writes in a row (a week of schedule, several taps on +)
+/// share one series of rereads. The poller keeps its own one-minute rhythm.
+fn reread_later(app: &AppState, now: bool) {
+    let gen = REREAD_GEN.fetch_add(1, Ordering::SeqCst) + 1;
+    let app = app.clone();
+    tokio::spawn(async move {
+        let first = if now { 0 } else { 5 };
+        for secs in [first, 10, 15] {
+            tokio::time::sleep(std::time::Duration::from_secs(secs)).await;
+            if REREAD_GEN.load(Ordering::SeqCst) != gen {
+                return;
+            }
+            let a = app.clone();
+            if let Ok(Err(e)) = tokio::task::spawn_blocking(move || a.refresh(false)).await {
+                tracing::debug!("reread after change: {e}");
+            }
+        }
+    });
+}
+
+/// Runs blocking device work off the async runtime.
+async fn blocking<T: Send + 'static>(
+    app: &AppState,
+    f: impl FnOnce(&App) -> anyhow::Result<T> + Send + 'static,
+) -> Result<T, ApiError> {
+    let app = app.clone();
+    tokio::task::spawn_blocking(move || f(&app))
+        .await
+        .map_err(|e| ApiError(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        .map_err(Into::into)
+}
+
+pub fn router(app: AppState) -> Router {
+    Router::new()
+        .route("/", get(index))
+        .route("/assets/*path", get(asset))
+        .route("/icons/:name", get(icon))
+        .route("/api/state", get(state))
+        .route("/api/refresh", post(refresh))
+        .route("/api/history", get(history))
+        .route("/api/metrics", get(metrics))
+        .route("/api/log", get(message_log))
+        .route("/api/rooms/:id", post(room_change))
+        .route("/api/rooms/:id/timer", get(timer_get))
+        .route("/api/rooms/:id/timer/:day", put(timer_put))
+        .route("/api/rooms/:id/timer/:day/copy", post(timer_copy))
+        .route("/api/menu/action", post(menu_action))
+        .route("/api/menu/detail", get(menu_detail))
+        .route("/api/menu/set", post(menu_set))
+        .route("/api/menu/open", post(menu_open))
+        .route("/api/menu/values", get(menu_values))
+        .route("/api/settings", get(settings_get).post(settings_set))
+        .route("/api/backups", get(backups_list).post(backup_create))
+        .route("/api/backups/:name", get(backup_get).delete(backup_delete))
+        .route("/api/backups/:name/restore", post(backup_restore))
+        .with_state(app)
+}
+
+async fn index() -> impl IntoResponse {
+    spa_index()
+}
+
+#[derive(rust_embed::RustEmbed)]
+#[folder = "web/dist"]
+struct WebDist;
+
+#[derive(rust_embed::RustEmbed)]
+#[folder = "static/icons"]
+struct Icons;
+
+fn spa_index() -> Response {
+    match WebDist::get("index.html") {
+        Some(file) => (
+            [
+                (header::CACHE_CONTROL, "no-cache"),
+                (header::CONTENT_TYPE, "text/html; charset=utf-8"),
+            ],
+            file.data.into_owned(),
+        )
+            .into_response(),
+        None => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            "Web UI not built: run pnpm build in web/",
+        )
+            .into_response(),
+    }
+}
+
+fn asset_mime(path: &str) -> &'static str {
+    if path.ends_with(".js") {
+        "application/javascript"
+    } else if path.ends_with(".css") {
+        "text/css"
+    } else if path.ends_with(".svg") {
+        "image/svg+xml"
+    } else if path.ends_with(".woff2") {
+        "font/woff2"
+    } else {
+        "application/octet-stream"
+    }
+}
+
+async fn asset(axum::extract::Path(path): axum::extract::Path<String>) -> Response {
+    let key = path.trim_start_matches('/');
+    match WebDist::get(key) {
+        Some(file) => (
+            [
+                (header::CONTENT_TYPE, asset_mime(key)),
+                (
+                    header::CACHE_CONTROL,
+                    if key.starts_with("assets/") {
+                        "public, max-age=31536000, immutable"
+                    } else {
+                        "no-cache"
+                    },
+                ),
+            ],
+            file.data.into_owned(),
+        )
+            .into_response(),
+        None => StatusCode::NOT_FOUND.into_response(),
+    }
+}
+
+/// The app's SVG icons style themselves through classes; give them colours here.
+async fn icon(Path(name): Path<String>, Query(q): Query<HashMap<String, String>>) -> Response {
+    let Some(file) = Icons::get(&name) else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    let svg = String::from_utf8_lossy(&file.data);
+    // ?mask=1 keeps only the artwork, for CSS masks coloured by the page theme
+    let style = if q.contains_key("mask") {
+        "<style>.icon-background{fill:none}.icon-foreground{fill:#000}</style>"
+    } else {
+        "<style>.icon-background{fill:#f2612a}.icon-foreground{fill:#fff}</style>"
+    };
+    let svg = match svg
+        .find("<svg")
+        .and_then(|i| svg[i..].find('>').map(|j| i + j + 1))
+    {
+        Some(at) => format!("{}{style}{}", &svg[..at], &svg[at..]),
+        None => svg.into_owned(),
+    };
+    (
+        [
+            (header::CONTENT_TYPE, "image/svg+xml"),
+            (header::CACHE_CONTROL, "max-age=86400"),
+        ],
+        svg,
+    )
+        .into_response()
+}
+
+async fn state(State(app): State<AppState>) -> Json<Value> {
+    let mut v = serde_json::to_value(&*app.snapshot.read().unwrap()).unwrap();
+    v["crawling"] = json!(app.crawling.load(Ordering::SeqCst));
+    v["crawl_done"] = json!(app.crawl_done.load(Ordering::SeqCst));
+    v["crawl_expected"] = json!(app.crawl_expected.load(Ordering::SeqCst));
+    v["history_since"] = json!(app.store.history_since());
+    v["backup_hours"] = json!(app.backup_hours);
+    v["read_only"] = json!(app.read_only);
+    v["mode_temps"] = app.store.mode_temps();
+    Json(v)
+}
+
+async fn refresh(State(app): State<AppState>) -> ApiResult {
+    blocking(&app, |a| a.refresh(true)).await?;
+    Ok(state(State(app)).await)
+}
+
+#[derive(Deserialize)]
+struct HoursQuery {
+    hours: Option<f64>,
+}
+
+async fn history(State(app): State<AppState>, Query(q): Query<HoursQuery>) -> ApiResult {
+    let since = now() - (q.hours.unwrap_or(24.0) * 3600.0) as i64;
+    Ok(Json(
+        blocking(&app, move |a| a.store.room_history(since)).await?,
+    ))
+}
+
+async fn metrics(State(app): State<AppState>, Query(q): Query<HoursQuery>) -> ApiResult {
+    let since = now() - (q.hours.unwrap_or(24.0) * 3600.0) as i64;
+    Ok(Json(
+        blocking(&app, move |a| a.store.metric_history(since, 600)).await?,
+    ))
+}
+
+async fn message_log(State(app): State<AppState>) -> ApiResult {
+    Ok(Json(blocking(&app, |a| a.device.message_log()).await?))
+}
+
+fn check_room(app: &App, id: u16) -> Result<(), ApiError> {
+    let snap = app.snapshot.read().unwrap();
+    if id == SYSTEM_ROOM && snap.system.is_some() || snap.rooms.iter().any(|r| r.id == id) {
+        Ok(())
+    } else {
+        Err(ApiError(StatusCode::NOT_FOUND, format!("no room {id}")))
+    }
+}
+
+/// Body: one of {"tdelta": ±1}, {"mode": ...}, {"name": ...}, {"season": ...},
+/// {"vacation": "yyyy-MM-dd HH:mm"} or {"vacation": null} to cancel.
+async fn room_change(
+    State(app): State<AppState>,
+    Path(id): Path<u16>,
+    Json(body): Json<Value>,
+) -> ApiResult {
+    guard_write(&app)?;
+    check_room(&app, id)?;
+    let mut change = RoomChange::default();
+    let mut cancel_holiday = false;
+    if let Some(d) = body.get("tdelta") {
+        let d = d
+            .as_i64()
+            .filter(|d| *d == 1 || *d == -1)
+            .ok_or_else(|| bad("tdelta must be 1 or -1"))?;
+        change.tdelta = Some(d as i8);
+    } else if let Some(m) = body.get("mode") {
+        let m = m
+            .as_str()
+            .filter(|m| ROOM_MODES.contains(m))
+            .ok_or_else(|| bad("mode must be off, regular, eco or turbo"))?;
+        change.mode = Some(m.into());
+    } else if let Some(n) = body.get("name") {
+        let n = n
+            .as_str()
+            .map(str::trim)
+            .filter(|n| !n.is_empty() && n.len() <= 32)
+            .ok_or_else(|| bad("invalid name"))?;
+        change.name = Some(n.into());
+    } else if let Some(s) = body.get("season") {
+        let s = s
+            .as_str()
+            .filter(|s| *s == "heating" || *s == "cooling")
+            .ok_or_else(|| bad("season must be heating or cooling"))?;
+        change.season = Some(s.into());
+    } else if let Some(v) = body.get("vacation") {
+        match v.as_str() {
+            Some(s) => {
+                let ok = s.len() == 16
+                    && s.chars().enumerate().all(|(i, c)| match i {
+                        4 | 7 => c == '-',
+                        10 => c == ' ',
+                        13 => c == ':',
+                        _ => c.is_ascii_digit(),
+                    });
+                if !ok {
+                    return Err(bad("vacation must be 'yyyy-MM-dd HH:mm'"));
+                }
+                change.vacation = Some(s.into());
+            }
+            None => cancel_holiday = true,
+        }
+    } else {
+        return Err(bad("nothing to change"));
+    }
+    tracing::info!("room {id} change {body}");
+    let st = blocking(&app, move |a| {
+        if cancel_holiday {
+            // the app cancels holiday mode by re-sending the current mode
+            let cur = a.device.room_state(id, &RoomChange::default())?;
+            let mode = cur
+                .mode
+                .split(' ')
+                .next()
+                .filter(|m| !m.is_empty())
+                .unwrap_or("regular")
+                .to_string();
+            change.mode = Some(mode);
+        }
+        let st = a.device.room_state(id, &change)?;
+        a.apply_room_state(id, st.clone());
+        // "all rooms" changes every room: read them all before answering so the answer shows it.
+        // A single room answers right away; its valves and the rest follow in the background.
+        if id == SYSTEM_ROOM {
+            if let Err(e) = a.refresh(false) {
+                tracing::debug!("reread after change: {e}");
+            }
+        }
+        Ok(st)
+    })
+    .await?;
+    reread_later(&app, id != SYSTEM_ROOM);
+    let mut v = serde_json::to_value(st).unwrap();
+    v["state"] = state(State(app)).await.0;
+    Ok(Json(v))
+}
+
+#[derive(Deserialize)]
+struct TimerQuery {
+    #[serde(rename = "type")]
+    kind: Option<u8>,
+}
+
+fn timer_type(id: u16, q: &TimerQuery) -> u8 {
+    if id == SYSTEM_ROOM {
+        2
+    } else {
+        q.kind.unwrap_or(0).min(1)
+    }
+}
+
+fn week_json(id: u16, values: &[u32]) -> Value {
+    let modes = device::timer_modes(id);
+    json!({"modes": modes, "days": device::decode_week(values, modes)})
+}
+
+async fn timer_get(
+    State(app): State<AppState>,
+    Path(id): Path<u16>,
+    Query(q): Query<TimerQuery>,
+) -> ApiResult {
+    check_room(&app, id)?;
+    let t = timer_type(id, &q);
+    let v = blocking(&app, move |a| a.device.room_timer(id, t, None)).await?;
+    Ok(Json(week_json(id, &v)))
+}
+
+#[derive(Deserialize)]
+struct DaySlots {
+    slots: Vec<String>,
+}
+
+async fn timer_put(
+    State(app): State<AppState>,
+    Path((id, day)): Path<(u16, u8)>,
+    Query(q): Query<TimerQuery>,
+    Json(body): Json<DaySlots>,
+) -> ApiResult {
+    guard_write(&app)?;
+    check_room(&app, id)?;
+    if day > 6 {
+        return Err(bad("day must be 0 (Monday) to 6"));
+    }
+    let bf =
+        device::bitfield(&body.slots, device::timer_modes(id)).map_err(|e| bad(e.to_string()))?;
+    let t = timer_type(id, &q);
+    tracing::info!("room {id} timer type {t} day {day} set");
+    let v = blocking(&app, move |a| a.device.room_timer(id, t, Some((day, bf)))).await?;
+    app.snapshot.write().unwrap().weeks_at = None;
+    reread_later(&app, false);
+    Ok(Json(week_json(id, &v)))
+}
+
+#[derive(Deserialize)]
+struct CopyBody {
+    mask: u8,
+}
+
+async fn timer_copy(
+    State(app): State<AppState>,
+    Path((id, day)): Path<(u16, u8)>,
+    Query(q): Query<TimerQuery>,
+    Json(body): Json<CopyBody>,
+) -> ApiResult {
+    guard_write(&app)?;
+    check_room(&app, id)?;
+    if day > 6 || body.mask == 0 || body.mask > 127 {
+        return Err(bad("invalid day or mask"));
+    }
+    let t = timer_type(id, &q);
+    tracing::info!(
+        "room {id} timer type {t} copy day {day} to mask {:#09b}",
+        body.mask
+    );
+    let v = blocking(&app, move |a| {
+        a.device.room_timer_copy(id, t, day, body.mask)
+    })
+    .await?;
+    app.snapshot.write().unwrap().weeks_at = None;
+    reread_later(&app, false);
+    Ok(Json(week_json(id, &v)))
+}
+
+#[derive(Deserialize)]
+struct MenuActionBody {
+    id: String,
+    action: String,
+}
+
+/// Sends a menu action (navigation, +/-, selection, yes/no...) and returns the new screen.
+async fn menu_action(State(app): State<AppState>, Json(b): Json<MenuActionBody>) -> ApiResult {
+    if !is_navigation(&b.action) {
+        guard_write(&app)?;
+    }
+    if app.crawling.load(Ordering::SeqCst) {
+        return Err(ApiError(
+            StatusCode::CONFLICT,
+            "Se está leyendo la configuración del equipo, espera a que termine".into(),
+        ));
+    }
+    tracing::info!("menu action {:?} on {:?}", b.action, b.id);
+    let writes = !is_navigation(&b.action);
+    let v = blocking(&app, move |a| {
+        let ext = a.extended();
+        let menu = a.device.menu_action(ext, &b.id, &b.action)?;
+        let kind = menu["type"].as_str().unwrap_or("").to_string();
+        let id = menu["id"].as_str().unwrap_or("").to_string();
+        let detail = if kind.is_empty() {
+            Value::Null
+        } else {
+            a.device.menu_detail(ext, &kind, &id)?
+        };
+        Ok(json!({"menu": menu, "detail": detail}))
+    })
+    .await?;
+    if writes {
+        reread_later(&app, false);
+    }
+    Ok(Json(v))
+}
+
+async fn menu_detail(
+    State(app): State<AppState>,
+    Query(q): Query<HashMap<String, String>>,
+) -> ApiResult {
+    let id = q.get("id").cloned().ok_or_else(|| bad("missing id"))?;
+    let kind = q.get("type").cloned().ok_or_else(|| bad("missing type"))?;
+    Ok(Json(
+        blocking(&app, move |a| {
+            a.device.menu_detail(a.extended(), &kind, &id)
+        })
+        .await?,
+    ))
+}
+
+async fn menu_set(State(app): State<AppState>, Json(b): Json<Value>) -> ApiResult {
+    guard_write(&app)?;
+    let id = b["id"]
+        .as_str()
+        .ok_or_else(|| bad("missing id"))?
+        .to_string();
+    let kind = b["type"]
+        .as_str()
+        .ok_or_else(|| bad("missing type"))?
+        .to_string();
+    tracing::info!("menu set {kind} {id}: {b}");
+    let v = blocking(&app, move |a| a.device.menu_set(&kind, &id, &b)).await?;
+    reread_later(&app, false);
+    Ok(Json(v))
+}
+
+async fn backups_list(State(app): State<AppState>) -> ApiResult {
+    Ok(Json(json!(blocking(&app, |a| a.list_backups()).await?)))
+}
+
+async fn backup_create(State(app): State<AppState>) -> ApiResult {
+    if app.crawling.load(Ordering::SeqCst) {
+        return Err(ApiError(
+            StatusCode::CONFLICT,
+            "Ya hay una copia en curso".into(),
+        ));
+    }
+    let name = blocking(&app, |a| a.create_backup("manual", false)).await?;
+    Ok(Json(json!({"name": name})))
+}
+
+async fn backup_get(
+    State(app): State<AppState>,
+    Path(name): Path<String>,
+) -> Result<Response, ApiError> {
+    let n = name.clone();
+    let v = blocking(&app, move |a| a.read_backup(&n))
+        .await
+        .map_err(|e| ApiError(StatusCode::NOT_FOUND, e.1))?;
+    Ok((
+        [
+            (header::CONTENT_TYPE, "application/json".to_string()),
+            (
+                header::CONTENT_DISPOSITION,
+                format!("attachment; filename=\"{name}\""),
+            ),
+        ],
+        serde_json::to_vec_pretty(&v).unwrap(),
+    )
+        .into_response())
+}
+
+async fn backup_delete(State(app): State<AppState>, Path(name): Path<String>) -> ApiResult {
+    guard_write(&app)?;
+    blocking(&app, move |a| {
+        a.read_backup(&name)?;
+        Ok(std::fs::remove_file(a.backups_dir().join(&name))?)
+    })
+    .await?;
+    Ok(Json(json!({"ok": true})))
+}
+
+#[derive(Deserialize)]
+struct RestoreBody {
+    apply: bool,
+    #[serde(default = "yes")]
+    names: bool,
+    #[serde(default = "yes")]
+    timers: bool,
+    /// Optional uploaded backup; otherwise the named file is used.
+    backup: Option<Value>,
+}
+
+fn yes() -> bool {
+    true
+}
+
+async fn backup_restore(
+    State(app): State<AppState>,
+    Path(name): Path<String>,
+    Json(b): Json<RestoreBody>,
+) -> ApiResult {
+    if b.apply {
+        guard_write(&app)?;
+    }
+    if app.crawling.load(Ordering::SeqCst) {
+        return Err(ApiError(
+            StatusCode::CONFLICT,
+            "Ya hay una copia en curso".into(),
+        ));
+    }
+    if let Some(up) = &b.backup {
+        if up["format"]
+            .as_str()
+            .is_none_or(|f| !f.starts_with("caleon-backup/"))
+            || !up["rooms"].is_array()
+        {
+            return Err(bad(
+                "Ese archivo no es una copia de seguridad de esta aplicación",
+            ));
+        }
+    }
+    tracing::info!(
+        "restore {name} apply={} names={} timers={}",
+        b.apply,
+        b.names,
+        b.timers
+    );
+    let apply = b.apply;
+    let v = blocking(&app, move |a| {
+        let backup = match b.backup {
+            Some(v) => v,
+            None => a.read_backup(&name)?,
+        };
+        a.restore(&backup, b.apply, b.names, b.timers)
+    })
+    .await?;
+    if apply {
+        app.snapshot.write().unwrap().weeks_at = None;
+        reread_later(&app, false);
+    }
+    Ok(Json(v))
+}
+
+fn settings_json(app: &App) -> Value {
+    let (settings, found) = &*app.conn.read().unwrap();
+    json!({
+        "transport": settings.transport,
+        "host": settings.host,
+        "email": settings.email,
+        "active": app.device.transport().kind(),
+        "available": crate::connection::available(),
+        "device": found.id,
+        "addr": found.addr.to_string(),
+    })
+}
+
+async fn settings_get(State(app): State<AppState>) -> Json<Value> {
+    Json(settings_json(&app))
+}
+
+#[derive(Deserialize)]
+struct SettingsBody {
+    transport: String,
+    #[serde(default)]
+    host: String,
+    #[serde(default)]
+    email: String,
+}
+
+/// Switches the connection mode: locates the device, checks the new transport answers and only
+/// then replaces the current one and saves the settings.
+async fn settings_set(State(app): State<AppState>, Json(b): Json<SettingsBody>) -> ApiResult {
+    guard_write(&app)?;
+    if app.crawling.load(Ordering::SeqCst) {
+        return Err(ApiError(
+            StatusCode::CONFLICT,
+            "Hay una copia en curso, espera a que termine".into(),
+        ));
+    }
+    let host = b.host.trim().to_string();
+    tracing::info!(
+        "settings: transport={} host={host:?} email={:?}",
+        b.transport,
+        b.email
+    );
+    blocking(&app, move |a| {
+        let want = a.device.id.clone();
+        let found = crate::connection::locate(&host, &want)?;
+        let settings = crate::connection::Settings {
+            transport: b.transport.clone(),
+            host,
+            email: b.email.trim().to_string(),
+        };
+        let t = crate::connection::build(&settings, &found, &a.schema, &a.data_dir)?;
+        t.invoke("versions.json", &[], true)
+            .map_err(|e| anyhow::anyhow!("el modo «{}» no respondió: {e}", b.transport))?;
+        a.device.set_transport(t);
+        settings.save(&a.data_dir)?;
+        *a.conn.write().unwrap() = (settings, found);
+        Ok(())
+    })
+    .await?;
+    Ok(Json(settings_json(&app)))
+}
+
+#[derive(Deserialize)]
+struct MenuOpenBody {
+    path: Vec<String>,
+}
+
+/// Opens the device menu at a path of entry titles (used to restore the screen after a reload).
+async fn menu_open(State(app): State<AppState>, Json(b): Json<MenuOpenBody>) -> ApiResult {
+    if app.crawling.load(Ordering::SeqCst) {
+        return Err(ApiError(
+            StatusCode::CONFLICT,
+            "Se está leyendo la configuración del equipo, espera a que termine".into(),
+        ));
+    }
+    let v = blocking(&app, move |a| {
+        let ext = a.extended();
+        let menu = a.renavigate(ext, &b.path)?;
+        let kind = menu["type"].as_str().unwrap_or("").to_string();
+        let id = menu["id"].as_str().unwrap_or("").to_string();
+        let detail = if kind.is_empty() {
+            Value::Null
+        } else {
+            a.device.menu_detail(ext, &kind, &id)?
+        };
+        Ok(json!({"menu": menu, "detail": detail}))
+    })
+    .await?;
+    Ok(Json(v))
+}
+
+/// Value shown on each menu screen, from the latest backup: {"Ajustes › Zonas › Zona B › Día V/I": "21.0°C"}.
+async fn menu_values(State(app): State<AppState>) -> ApiResult {
+    Ok(Json(blocking(&app, |a| {
+        let Some(name) = a.list_backups()?.first().and_then(|b| b["name"].as_str().map(String::from)) else {
+            return Ok(json!({}));
+        };
+        let backup = a.read_backup(&name)?;
+        let mut flat = Vec::new();
+        crate::app::flatten_values(&backup["menu"], &mut flat);
+        Ok(json!({"created": backup["created"], "values": flat.into_iter().map(|(k, v)| (k, Value::String(v))).collect::<serde_json::Map<String, Value>>()}))
+    })
+    .await?))
+}

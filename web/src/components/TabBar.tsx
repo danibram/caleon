@@ -1,0 +1,50 @@
+import { Link, useLocation } from 'react-router'
+import { Icon } from './Icon.tsx'
+import { NAV, TABS } from '../lib/icons.ts'
+
+function isActive(path: string, current: string, inTabbar: boolean) {
+  const inMore =
+    inTabbar &&
+    ['/backups', '/info'].some((x) => current.startsWith(x)) &&
+    path === '/settings'
+  if (inMore) return true
+  if (path === '/')
+    return current === '/' || current.startsWith('/room') || current.startsWith('/timer')
+  return current.startsWith(path)
+}
+
+export function TabBar() {
+  const { pathname } = useLocation()
+  const items = NAV.filter(([h]) => TABS.includes(h))
+
+  return (
+    <nav className="tabbar" aria-label="Secciones">
+      {items.map(([h, l, i]) => (
+        <Link
+          key={h}
+          to={h}
+          viewTransition
+          className={isActive(h, pathname, true) ? 'active' : ''}
+        >
+          <Icon name={i} />
+          <span>{l}</span>
+        </Link>
+      ))}
+    </nav>
+  )
+}
+
+export function TopNav() {
+  const { pathname } = useLocation()
+
+  return (
+    <nav id="nav">
+      {NAV.map(([h, l, i]) => (
+        <Link key={h} to={h} viewTransition className={isActive(h, pathname, false) ? 'active' : ''}>
+          <Icon name={i} />
+          <span className="nav-label">{l}</span>
+        </Link>
+      ))}
+    </nav>
+  )
+}

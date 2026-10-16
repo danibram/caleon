@@ -1,0 +1,6 @@
+target
+data
+dist
+vendor/nabto4/mac64
+web/node_modules
+web/dist

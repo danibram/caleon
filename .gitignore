@@ -1,0 +1,9 @@
+target/
+data/
+dist/
+# closed-source Nabto SDK, dropped in locally for --features nabto-sdk
+vendor/
+web/node_modules/
+web/dist/
+.DS_Store
+/*.png

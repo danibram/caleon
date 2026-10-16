@@ -1,0 +1,2331 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>°CALEON</title>
+<link rel="icon" href="/icons/caleon_logo.svg">
+<style>
+:root {
+  /* warm, domestic palette: neutrals tinted toward the Caleon orange, in OKLCH */
+  --bg: oklch(0.973 0.007 70); --card: oklch(0.995 0.004 75); --ink: oklch(0.27 0.014 55);
+  --muted: oklch(0.55 0.018 58); --line: oklch(0.905 0.01 68); --soft: oklch(0.955 0.011 70);
+  --accent: oklch(0.66 0.2 42); --accent-soft: oklch(0.93 0.05 55); --accent-ink: oklch(0.42 0.14 42);
+  --on-accent: oklch(0.99 0.01 80); --eco: oklch(0.74 0.07 160); --turbo: oklch(0.58 0.13 38);
+  --off: oklch(0.5 0.012 65); --cool: oklch(0.6 0.13 248);
+  --normal: oklch(0.85 0.085 80); --on-normal: oklch(0.32 0.05 72); --normal-ink: oklch(0.47 0.08 72);
+  --slot-off: oklch(0.92 0.008 70); --slot-eco: var(--eco); --slot-normal: var(--normal); --slot-turbo: var(--turbo);
+  --warn-bg: oklch(0.95 0.05 75); --warn-ink: oklch(0.47 0.12 55);
+  --shadow: 0 1px 2px oklch(0.5 0.03 60 / 0.05), 0 4px 16px oklch(0.5 0.03 60 / 0.06);
+  --shadow-sm: 0 1px 2px oklch(0.5 0.03 60 / 0.06);
+  --radius: 18px;
+  --series: oklch(0.55 0.09 235), oklch(0.56 0.12 350), oklch(0.6 0.1 135), oklch(0.66 0.11 75),
+            oklch(0.6 0.16 345), oklch(0.6 0.1 120), oklch(0.55 0.05 260), oklch(0.6 0.02 60);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: oklch(0.195 0.01 65); --card: oklch(0.255 0.013 62); --ink: oklch(0.93 0.012 72);
+    --muted: oklch(0.68 0.016 64); --line: oklch(0.33 0.014 62); --soft: oklch(0.305 0.014 62);
+    --accent: oklch(0.7 0.19 45); --accent-soft: oklch(0.36 0.08 48); --accent-ink: oklch(0.82 0.13 52);
+    --off: oklch(0.48 0.012 64); --normal-ink: oklch(0.86 0.12 80);
+    --soft: oklch(0.335 0.015 62);
+    --eco: oklch(0.66 0.07 160); --turbo: oklch(0.6 0.12 38); --normal: oklch(0.73 0.085 72);
+    --slot-off: oklch(0.38 0.012 62); --slot-eco: oklch(0.6 0.065 160); --slot-normal: oklch(0.68 0.08 72); --slot-turbo: oklch(0.56 0.12 38); --warn-bg: oklch(0.34 0.07 65); --warn-ink: oklch(0.85 0.09 70);
+    --shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 6px 20px oklch(0 0 0 / 0.28); --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.3);
+  }
+}
+:root[data-theme="dark"] {
+    --bg: oklch(0.195 0.01 65); --card: oklch(0.255 0.013 62); --ink: oklch(0.93 0.012 72);
+    --muted: oklch(0.68 0.016 64); --line: oklch(0.33 0.014 62); --soft: oklch(0.305 0.014 62);
+    --accent: oklch(0.7 0.19 45); --accent-soft: oklch(0.36 0.08 48); --accent-ink: oklch(0.82 0.13 52);
+    --off: oklch(0.48 0.012 64); --normal-ink: oklch(0.86 0.12 80);
+    --soft: oklch(0.335 0.015 62);
+    --eco: oklch(0.66 0.07 160); --turbo: oklch(0.6 0.12 38); --normal: oklch(0.73 0.085 72);
+    --slot-off: oklch(0.38 0.012 62); --slot-eco: oklch(0.6 0.065 160); --slot-normal: oklch(0.68 0.08 72); --slot-turbo: oklch(0.56 0.12 38); --warn-bg: oklch(0.34 0.07 65); --warn-ink: oklch(0.85 0.09 70);
+    --shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 6px 20px oklch(0 0 0 / 0.28); --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.3);
+  }
+:root { color-scheme: light dark; }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+a { color: inherit; }
+::selection { background: var(--accent-soft); }
+html { scrollbar-gutter: stable; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
+header { position: sticky; top: 0; z-index: 5; background: color-mix(in oklch, var(--bg) 88%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+.bar { max-width: 1150px; margin: 0 auto; padding: 13px 20px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+h1 { margin: 0; font-size: 19px; letter-spacing: -0.02em; font-weight: 650; }
+h1 span { color: var(--accent); }
+.meta { color: var(--muted); font-size: 12px; text-align: right; line-height: 1.35; display: flex; align-items: center; gap: 7px; }
+.brand { text-decoration: none; }
+.live { width: 8px; height: 8px; border-radius: 50%; background: oklch(0.7 0.16 150); box-shadow: 0 0 0 3px color-mix(in oklch, oklch(0.7 0.16 150) 22%, var(--bg)); flex: none; }
+.live.stale { background: oklch(0.75 0.14 75); box-shadow: none; }
+.live.err { background: var(--turbo); box-shadow: 0 0 0 3px color-mix(in oklch, var(--turbo) 22%, var(--bg)); }
+@media (max-width: 680px) { .meta .long { display: none; } }
+#nav { max-width: 1150px; margin: 0 auto; padding: 4px 14px 0; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+#nav::-webkit-scrollbar { display: none; }
+#nav a { padding: 10px 14px; text-decoration: none; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; font-size: 14px; font-weight: 500; transition: color .2s; display: flex; align-items: center; gap: 7px; }
+#nav a svg { width: 18px; height: 18px; }
+#nav a .nav-label { display: inline; }
+#nav a:hover { color: var(--ink); }
+#nav a.active { color: var(--ink); border-color: var(--ink); }
+main { max-width: 1150px; margin: 0 auto; padding: 20px 20px 48px; }
+h2 { font-size: 13px; margin: 0 0 12px; color: var(--muted); font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; }
+h3 { margin: 0; font-size: 19px; letter-spacing: -0.01em; }
+.page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+.page-head h3 { font-size: 23px; }
+.back { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+.back:hover { color: var(--accent); }
+.banner { background: var(--warn-bg); color: var(--warn-ink); padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+/* bottom tab bar on phones */
+.tabbar { display: none; }
+@media (max-width: 680px) {
+  #nav { display: none; }
+  main { padding: 16px 16px 92px; }
+  .bar { padding: 12px 16px; }
+  .tabbar { display: grid; position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+    grid-auto-flow: column; grid-auto-columns: 1fr; background: color-mix(in oklch, var(--card) 90%, transparent);
+    backdrop-filter: blur(16px); border-top: 1px solid var(--line); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); }
+  .tabbar a { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 5px 0; text-decoration: none;
+    color: var(--muted); font-size: 11px; font-weight: 600; transition: color .15s; }
+  .tabbar a svg { width: 23px; height: 23px; }
+  .tabbar a.active { color: var(--ink); }
+  .tabbar a.active span { font-weight: 700; }
+}
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow-sm); }
+.card + .card, .section { margin-top: 16px; }
+.row { display: flex; align-items: center; gap: 10px; }
+.spread { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.room-icon { width: 36px; height: 36px; flex: none; }
+.room-title { font-weight: 600; font-size: 16px; text-decoration: none; letter-spacing: -0.01em; }
+.badge { font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--soft); color: var(--muted); white-space: nowrap; letter-spacing: 0.01em; }
+.badge.regular { background: color-mix(in oklch, var(--normal) 24%, var(--card)); color: var(--normal-ink); }
+.badge.turbo { background: color-mix(in oklch, var(--turbo) 18%, var(--card)); color: var(--turbo); }
+.badge.eco { background: color-mix(in oklch, var(--eco) 18%, var(--card)); color: var(--eco); }
+.badge.holiday { background: color-mix(in oklch, var(--cool) 18%, var(--card)); color: var(--cool); }
+.badge.heat { background: var(--accent); color: var(--on-accent); }
+.room-card { cursor: pointer; transition: box-shadow .25s, transform .25s cubic-bezier(.22,1,.36,1), border-color .25s; }
+@media (hover: hover) { .room-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); border-color: color-mix(in oklch, var(--accent) 35%, var(--line)); } }
+.room-card.heating { border-color: color-mix(in oklch, var(--accent) 45%, var(--line)); }
+.temp { font-size: 46px; font-weight: 280; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; line-height: 1.05; margin-top: 10px; }
+.temp small { font-size: 18px; color: var(--muted); margin-left: 2px; font-weight: 400; }
+.setpoint { display: flex; align-items: center; justify-content: space-between; margin: 16px 0 14px; padding: 6px; border-radius: 14px; background: var(--soft); }
+.setpoint .value { font-size: 21px; font-weight: 650; font-variant-numeric: tabular-nums; text-align: center; letter-spacing: -0.01em; }
+.setpoint .label { font-size: 11px; color: var(--muted); text-align: center; letter-spacing: 0.02em; }
+.round { width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--ink); font-size: 24px; line-height: 1; cursor: pointer; display: grid; place-items: center; box-shadow: var(--shadow-sm); transition: transform .12s cubic-bezier(.22,1,.36,1), border-color .15s, color .15s; -webkit-tap-highlight-color: transparent; }
+.round:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.round:active:not(:disabled) { transform: scale(0.9); }
+button { font: inherit; -webkit-tap-highlight-color: transparent; }
+button:disabled { opacity: .4; cursor: default; }
+.modes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; background: var(--soft); padding: 4px; border-radius: 13px; }
+.modes button { border: 0; background: transparent; color: var(--muted); border-radius: 10px; padding: 9px 0; font-size: 12px; font-weight: 600; cursor: pointer; transition: background .2s, color .2s; }
+.modes button:hover:not(:disabled):not(.active) { color: var(--ink); }
+.modes button.active { background: var(--card); color: var(--accent); box-shadow: var(--shadow-sm); }
+.modes button.active[data-mode="eco"] { color: var(--eco); }
+.modes button.active[data-mode="turbo"] { color: var(--turbo); }
+.modes button.active[data-mode="off"] { color: var(--off); }
+.btn { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 11px; padding: 9px 14px; font-size: 13.5px; font-weight: 550; cursor: pointer; box-shadow: var(--shadow-sm); transition: border-color .15s, background .15s, transform .1s; }
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn.primary { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+.btn.danger { color: var(--turbo); }
+/* radial setpoint gauge on the room page */
+.gauge { position: relative; width: min(280px, 72vw); aspect-ratio: 1; margin: 6px auto 2px; }
+.gauge svg { width: 100%; height: 100%; transform: rotate(0deg); }
+.gauge .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.gauge .g-temp { font-size: 54px; font-weight: 280; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; line-height: 1; }
+.gauge .g-temp small { font-size: 22px; color: var(--muted); }
+.gauge .g-set { margin-top: 6px; font-size: 13px; color: var(--muted); font-weight: 550; }
+.gauge .g-set b { color: var(--accent); font-variant-numeric: tabular-nums; }
+.dial-controls { display: flex; align-items: center; justify-content: center; gap: 22px; margin: 10px 0 2px; }
+.dial-controls .round { width: 58px; height: 58px; font-size: 30px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 12px; }
+.tile { border: 1px solid var(--line); border-radius: 14px; background: var(--card); padding: 14px 8px; text-align: center; cursor: pointer; color: var(--ink); text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: var(--shadow-sm); transition: border-color .18s, transform .18s cubic-bezier(.22,1,.36,1), box-shadow .18s; }
+.tile img { width: 42px; height: 42px; }
+.tile:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
+.tile.hl { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+.tile.disabled { opacity: .45; cursor: default; pointer-events: none; }
+/* room action rows: clearer than a square-tile grid */
+.actrow { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.actrow a, .actrow button { display: flex; align-items: center; gap: 11px; text-align: left; border: 1px solid var(--line); background: var(--card);
+  color: var(--ink); border-radius: 13px; padding: 11px 13px; cursor: pointer; text-decoration: none; font-size: 14px; font-weight: 550;
+  box-shadow: var(--shadow-sm); transition: border-color .15s, transform .12s, background .15s; }
+.actrow a:hover, .actrow button:hover { border-color: var(--accent); }
+.actrow a:active, .actrow button:active { transform: scale(0.98); }
+.actrow .ic { width: 34px; height: 34px; flex: none; border-radius: 10px; background: var(--accent-soft); display: grid; place-items: center; }
+.actrow .ic img { width: 22px; height: 22px; }
+.list { display: flex; flex-direction: column; }
+.list button { text-align: left; border: 0; border-top: 1px solid var(--line); background: none; color: var(--ink); padding: 14px 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 15px; transition: color .12s; }
+.list button:first-child { border-top: 0; }
+@media (hover: hover) { .list button:hover:not(:disabled) { color: var(--accent); } }
+.big-value { font-size: 44px; font-weight: 300; text-align: center; margin: 14px 0; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+.lines p { margin: 3px 0; font-variant-numeric: tabular-nums; }
+.lines p.center { text-align: center; }
+.lines p.link { color: var(--accent); cursor: pointer; }
+input, select { font: inherit; padding: 10px 13px; border-radius: 11px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); transition: border-color .15s; }
+input:focus, select:focus { outline: none; border-color: var(--accent); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+td, th { padding: 7px 6px; border-top: 1px solid var(--line); vertical-align: top; text-align: left; }
+th { color: var(--muted); font-weight: 600; border-top: 0; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.chart { width: 100%; height: 260px; display: block; }
+.chart text { fill: var(--muted); font-size: 11px; }
+.chart .gl { stroke: var(--line); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+.legend label { cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+.seg { display: inline-flex; background: var(--soft); border-radius: 11px; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: transparent; color: var(--muted); padding: 6px 12px; font-size: 12.5px; font-weight: 600; cursor: pointer; border-radius: 8px; transition: background .18s, color .18s; }
+.seg button:hover:not(.active) { color: var(--ink); }
+.seg button.active { background: var(--card); color: var(--ink); box-shadow: var(--shadow-sm); }
+.week { display: grid; grid-template-columns: 74px repeat(48, minmax(0, 1fr)); gap: 1px; user-select: none; touch-action: none; }
+.week .d { font-size: 12px; color: var(--muted); display: flex; align-items: center; cursor: pointer; }
+.week .d.dirty { color: var(--accent); font-weight: 600; }
+.week .s { height: 30px; border-radius: 2px; cursor: crosshair; }
+.week .h { font-size: 10px; color: var(--muted); grid-column: span 4; }
+.slot-off, .sw.slot-off { background: var(--slot-off) repeating-linear-gradient(135deg, transparent 0 5px, color-mix(in oklch, var(--ink) 9%, transparent) 5px 6px); }
+.slot-regular { background: var(--slot-normal); }
+.slot-eco { background: var(--slot-eco); }
+.slot-turbo { background: var(--slot-turbo); }
+.slot-on, .slot-hws_on { background: var(--accent); }
+.slot-hws_off { background: var(--slot-off); }
+.sw { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; border: 1px solid var(--line); }
+.palette button.active { box-shadow: 0 0 0 2px var(--ink); }
+.pill { display: inline-block; min-width: 36px; text-align: center; padding: 2px 8px; border-radius: 7px; font-size: 12px; font-weight: 600; background: var(--soft); color: var(--muted); }
+.pill.on { background: var(--accent); color: var(--on-accent); }
+.metric-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 16px; }
+.kv { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.kv:first-of-type { border-top: 0; }
+.kv b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: s 0.8s linear infinite; vertical-align: -2px; }
+@keyframes s { to { transform: rotate(360deg); } }
+.no-vt .view-enter { animation: fade .3s cubic-bezier(.22,1,.36,1); }
+@keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+dialog { border: 1px solid var(--line); border-radius: 16px; background: var(--card); color: var(--ink); padding: 20px; width: min(380px, 92vw); box-shadow: var(--shadow); }
+dialog::backdrop { background: oklch(0.2 0.02 60 / 0.4); backdrop-filter: blur(2px); }
+dialog input { width: 100%; margin: 10px 0 16px; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--card); color: var(--ink); border: 1px solid var(--line); padding: 12px 18px; border-radius: 14px; font-size: 14px; font-weight: 550; z-index: 30; width: max-content; max-width: min(520px, calc(100vw - 32px)); white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; box-shadow: var(--shadow); animation: fade .25s; }
+@media (max-width: 680px) { .toast { bottom: 84px; } }
+@media (max-width: 640px) {
+  .week { grid-template-columns: 40px repeat(48, minmax(0, 1fr)); }
+  .week .s { height: 26px; }
+  .temp { font-size: 42px; }
+  .card { padding: 16px; }
+}
+
+/* ---- icons */
+svg.mini { width: 14px; height: 14px; vertical-align: -2px; }
+svg.heat, .heat svg { color: var(--accent); }
+.badge svg.mini { width: 12px; height: 12px; margin-right: 3px; vertical-align: -1.5px; }
+.badges { gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+/* ---- home summary */
+.hero { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap; padding: 6px 2px 22px; }
+.hero-kicker { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 550; color: var(--ink); }
+.hero-ic { width: 17px; height: 17px; }
+.hero-temp { font-size: 76px; font-weight: 250; letter-spacing: -0.05em; line-height: 0.95; margin: 8px 0 6px; font-variant-numeric: tabular-nums; }
+.hero-temp small { font-size: 28px; color: var(--muted); font-weight: 350; margin-left: 2px; letter-spacing: 0; }
+.hero-sub { color: var(--muted); font-size: 13.5px; }
+.hero-facts { display: flex; gap: 8px; flex-wrap: wrap; }
+.hero-facts div { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; min-width: 92px; font-size: 12px; color: var(--muted); box-shadow: var(--shadow-sm); }
+.hero-facts span { display: block; font-size: 22px; font-weight: 600; color: var(--ink); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.section-head { margin: 4px 0 10px; }
+.section-head h2 { margin: 0; }
+.link-more { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 600; color: var(--ink); text-decoration: none; }
+/* ---- room cards */
+.room-card .room-title { font-size: 16.5px; }
+.room-reading { display: flex; align-items: baseline; gap: 12px; }
+.room-reading .hum { display: inline-flex; align-items: center; gap: 4px; }
+.room-card.is-off .temp { color: var(--muted); }
+.room-card.heating { background: linear-gradient(180deg, color-mix(in oklch, var(--accent) 7%, var(--card)), var(--card) 60%); }
+.all-rooms .modes { max-width: 520px; }
+/* ---- room page */
+.room-hero { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow-sm); }
+.room-icon.lg { width: 48px; height: 48px; }
+.gauge .g-scale { fill: var(--muted); font-size: 10px; font-weight: 600; }
+.gauge .g-cap { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; display: flex; align-items: center; gap: 4px; }
+.gauge.heating .g-cap { color: var(--accent); }
+.gauge.off .g-temp { color: var(--muted); }
+.gauge .g-fill { transition: d .4s cubic-bezier(.22,1,.36,1); }
+.gauge.heating svg { filter: drop-shadow(0 0 14px color-mix(in oklch, var(--accent) 35%, transparent)); }
+.dial-controls { display: flex; align-items: center; justify-content: center; gap: 18px; margin: 4px 0 6px; }
+.dial-hint { font-size: 12px; color: var(--muted); min-width: 120px; text-align: center; }
+.hum-line { text-align: center; color: var(--muted); font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 5px; margin-bottom: 4px; }
+.room-modes { margin-top: 14px; }
+.outputs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; justify-content: center; }
+.out { font-size: 12px; font-weight: 550; padding: 4px 10px; border-radius: 999px; background: var(--soft); color: var(--muted); }
+.out.on { background: var(--accent-soft); color: var(--accent-ink); }
+.group-title { margin: 24px 2px 10px; }
+.actrow .lbl { flex: 1; display: flex; flex-direction: column; line-height: 1.25; }
+.actrow .sub { font-size: 12px; color: var(--muted); font-weight: 450; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.actrow .chev { width: 16px; height: 16px; color: var(--muted); flex: none; }
+.actrow { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.empty { text-align: center; color: var(--muted); padding: 48px 16px; }
+.empty.waiting { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 360px; margin: 0 auto; }
+.empty.waiting b { color: var(--ink); font-size: 17px; }
+@media (max-width: 680px) {
+  .hero { padding-top: 2px; gap: 14px; }
+  .hero-temp { font-size: 64px; }
+  .hero-facts { width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
+  .hero-facts div { min-width: 0; padding: 9px 11px; }
+  .hero-facts span { font-size: 19px; }
+  .grid { grid-template-columns: 1fr; gap: 12px; }
+  .room-hero { padding: 16px; }
+  .actrow { grid-template-columns: 1fr; }
+}
+
+/* ---- schedule editor */
+.sched { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 20px; align-items: start; }
+.daychips { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 14px; }
+.daychips button { position: relative; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 12px; padding: 10px 0; font-weight: 650; font-size: 14px; cursor: pointer; box-shadow: var(--shadow-sm); transition: background .15s, color .15s; }
+.daychips button.today { border-color: color-mix(in oklch, var(--accent) 45%, var(--line)); }
+.daychips button.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.daychips .dot { position: absolute; top: 5px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.weekmini { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+.wrow { display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 8px; border: 0; background: none; padding: 2px 6px; cursor: pointer; color: var(--muted); font-size: 11.5px; font-weight: 600; text-align: left; }
+.wrow.active { color: var(--ink); }
+.wbar { position: relative; display: flex; height: 14px; border-radius: 5px; overflow: hidden; background: var(--soft); }
+.wrow.active { background: var(--soft); border-radius: 10px; }
+.wrow.active .wlabel { color: var(--ink); font-weight: 750; }
+.wbar i { display: block; height: 100%; }
+.wbar .now { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--ink); border-radius: 1px; }
+.waxis { display: flex; justify-content: space-between; margin-left: 42px; font-size: 10px; color: var(--muted); }
+.daysum .periods { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.periods li { display: grid; grid-template-columns: 14px 110px 1fr; align-items: center; gap: 10px; font-size: 14px; }
+.periods .ptime { font-variant-numeric: tabular-nums; color: var(--muted); }
+.periods .pmode { font-weight: 600; }
+.copyopts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+.link-more { border: 0; background: none; cursor: pointer; padding: 0; }
+.brushes { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 6px; background: var(--soft); padding: 4px; border-radius: 13px; }
+.brushes button { display: flex; align-items: center; justify-content: center; gap: 7px; border: 0; background: transparent; border-radius: 10px; padding: 10px 4px; font-weight: 600; font-size: 13px; color: var(--muted); cursor: pointer; }
+.brushes button.active { background: color-mix(in oklch, var(--ink) 12%, var(--card)); color: var(--ink); box-shadow: var(--shadow-sm); border: 1px solid color-mix(in oklch, var(--ink) 16%, transparent); }
+.hint { margin: 10px 2px 10px; }
+.dayedit { display: flex; flex-direction: column; gap: 3px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.hrow { display: grid; grid-template-columns: 50px 1fr 1fr; gap: 3px; align-items: stretch; }
+.hrow .hl { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; align-self: center; }
+.cell { height: 34px; border-radius: 7px; cursor: pointer; position: relative; display: flex; align-items: center; padding-left: 9px; transition: filter .1s; }
+.cell span { font-size: 11.5px; font-weight: 650; color: var(--on-accent); white-space: nowrap; pointer-events: none; }
+.cell.slot-regular span, .cell.slot-eco span { color: var(--on-normal); }
+:root:not([data-theme="light"]) .cell.slot-eco span { color: var(--ink); }
+.modes[data-am="eco"] button.active { color: var(--ink); }
+.cell.slot-off span, .cell.slot-hws_off span { color: var(--muted); }
+.cell.changed { box-shadow: inset 0 0 0 2px var(--ink); }
+.cell.is-now::after { content: ""; position: absolute; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--card); box-shadow: 0 0 0 2px var(--ink); }
+.cell:hover { filter: brightness(1.06); }
+.savebar { position: fixed; left: 50%; bottom: 20px; transform: translate(-50%, 140%); z-index: 15; display: flex; align-items: center; gap: 16px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); padding: 10px 12px 10px 18px; border-radius: 16px; font-weight: 600; font-size: 14px; transition: transform .35s cubic-bezier(.22,1,.36,1); width: max-content; max-width: calc(100vw - 24px); }
+.savebar:not(.show) { opacity: 0; visibility: hidden; pointer-events: none; }
+.savebar.show { transform: translate(-50%, 0); opacity: 1; visibility: visible; transition: transform .35s var(--ease), opacity .2s; }
+@media (max-width: 860px) { .sched { grid-template-columns: 1fr; } }
+@media (max-width: 680px) {
+  .savebar { bottom: calc(76px + env(safe-area-inset-bottom)); width: calc(100vw - 24px); justify-content: space-between; }
+  .periods li { grid-template-columns: 14px 100px 1fr; }
+}
+
+/* ================= motion ================= */
+:root { --ease: cubic-bezier(.22, 1, .36, 1); --ease-io: cubic-bezier(.65, 0, .35, 1); }
+header { view-transition-name: header; }
+.tabbar { view-transition-name: tabbar; }
+::view-transition-old(root) { animation: 200ms var(--ease) both vt-out; }
+::view-transition-new(root) { animation: 360ms var(--ease) both vt-in; }
+[data-nav="back"]::view-transition-old(root) { animation-name: vt-out-back; }
+[data-nav="back"]::view-transition-new(root) { animation-name: vt-in-back; }
+[data-nav="same"]::view-transition-old(root) { animation-name: vt-fade-out; }
+[data-nav="same"]::view-transition-new(root) { animation-name: vt-fade-in; }
+::view-transition-group(*) { animation-duration: 420ms; animation-timing-function: var(--ease); }
+::view-transition-old(header), ::view-transition-new(header), ::view-transition-old(tabbar), ::view-transition-new(tabbar) { animation: none; }
+@keyframes vt-out { to { opacity: 0; transform: translateX(-28px); } }
+@keyframes vt-in { from { opacity: 0; transform: translateX(36px); } }
+@keyframes vt-out-back { to { opacity: 0; transform: translateX(28px); } }
+@keyframes vt-in-back { from { opacity: 0; transform: translateX(-36px); } }
+@keyframes vt-fade-out { to { opacity: 0; transform: translateY(-6px); } }
+@keyframes vt-fade-in { from { opacity: 0; transform: translateY(8px); } }
+/* staggered entrance, only right after navigating (class removed afterwards) */
+.view-enter .stagger > * { animation: rise .55s var(--ease) both; animation-delay: calc(var(--k, 0) * 45ms + 60ms); }
+.view-enter .hero { animation: rise .6s var(--ease) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(12px) scale(.985); } }
+/* gauge: arc and markers move with transforms / dash offset */
+.gauge .g-fill { transition: stroke-dashoffset .7s var(--ease), stroke .3s; }
+.gauge .g-rot { transform-origin: 100px 100px; transition: transform .7s var(--ease); }
+.view-enter .gauge .g-track { animation: track-in .7s var(--ease) both; }
+@keyframes track-in { from { opacity: 0; } }
+.tick-up { animation: tick-up .45s var(--ease); }
+.tick-down { animation: tick-down .45s var(--ease); }
+@keyframes tick-up { from { opacity: 0; transform: translateY(10px); } }
+@keyframes tick-down { from { opacity: 0; transform: translateY(-10px); } }
+/* sliding indicator for the mode selector */
+.modes { position: relative; }
+.mode-ind { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px - 15px) / 4); border-radius: 10px; background: var(--card); box-shadow: var(--shadow-sm); transform: translateX(calc(var(--i, 0) * (100% + 5px))); transition: transform .45s var(--ease); pointer-events: none; }
+.modes button { position: relative; z-index: 1; }
+.modes button.active { background: transparent; box-shadow: none; }
+.modes.no-active .mode-ind { opacity: 0; }
+/* life */
+.live { position: relative; }
+.live:not(.stale):not(.err)::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: oklch(0.7 0.16 150); animation: ping 2.4s var(--ease) infinite; }
+@keyframes ping { 0% { transform: scale(1); opacity: .6; } 70%, 100% { transform: scale(2.6); opacity: 0; } }
+.badge.heat svg, .gauge.heating .g-cap svg, .hero-ic.heat { animation: breathe 2.6s var(--ease-io) infinite; transform-origin: 50% 80%; }
+@keyframes breathe { 50% { transform: scale(1.18); opacity: .8; } }
+.tabbar a svg { transition: transform .3s var(--ease); }
+.tabbar a.active svg { transform: translateY(-1px) scale(1.08); }
+.tabbar a:active svg { transform: scale(.9); }
+.room-card:active { transform: scale(.985); transition-duration: .1s; }
+.actrow a .chev, .actrow button .chev { transition: transform .25s var(--ease); }
+.actrow a:hover .chev, .actrow button:hover .chev { transform: translateX(3px); }
+.toast { animation: toast-in .45s var(--ease); }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 16px) scale(.96); } to { transform: translate(-50%, 0); } }
+/* skeletons instead of spinners */
+.skel { border-radius: var(--radius); background: linear-gradient(100deg, var(--soft) 30%, color-mix(in oklch, var(--soft) 55%, var(--card)) 50%, var(--soft) 70%) 0 0 / 300% 100%; animation: shimmer 1.4s linear infinite; }
+@keyframes shimmer { to { background-position: -150% 0; } }
+.skel-stack { display: grid; gap: 14px; }
+/* chart lines draw in once */
+.view-enter .chart path.line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 1.1s var(--ease) .15s forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after, ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; transition: none !important; }
+}
+
+/* dialog: centered on desktop, bottom sheet on phones */
+.presets { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: -6px 0 16px; }
+dialog input[type="datetime-local"] { font-size: 16px; padding: 12px 13px; }
+.presets:empty { display: none; }
+.chip { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.chip.active { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+#dlgTitle { font-size: 17px; margin-bottom: 4px; }
+dialog[open] { animation: dlg-in .35s var(--ease); }
+@keyframes dlg-in { from { opacity: 0; transform: translateY(14px) scale(.97); } }
+@media (max-width: 680px) {
+  dialog { margin: auto 0 0; width: 100vw; max-width: 100vw; border-radius: 22px 22px 0 0; padding: 22px 18px calc(18px + env(safe-area-inset-bottom)); border-bottom: 0; }
+  dialog[open] { animation: sheet-in .4s var(--ease); }
+  @keyframes sheet-in { from { transform: translateY(100%); } }
+  dialog .actions .btn { flex: 1; padding: 13px; }
+}
+.ic-circle { width: 36px; height: 36px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-ink); display: grid; place-items: center; flex: none; }
+.ic-circle svg { width: 19px; height: 19px; }
+.actrow .ic { color: var(--accent-ink); }
+.actrow .ic svg { width: 19px; height: 19px; }
+/* program band */
+.band { margin: 12px 0 2px; }
+.band-bar { position: relative; display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: var(--soft); }
+.band.big .band-bar { height: 12px; }
+.band-bar i { display: block; height: 100%; }
+
+.band .needle { position: absolute; top: -3px; bottom: -3px; width: 3px; border-radius: 2px; background: var(--ink); box-shadow: 0 0 0 2px var(--card); }
+.band-cap { display: flex; align-items: center; gap: 5px; margin-top: 7px; font-size: 12.5px; color: var(--muted); font-weight: 500; }
+.band.big { margin: 14px 4px 4px; }
+/* stronger, bigger mode selector */
+.modes button { padding: 12px 0; font-size: 13px; min-height: 44px; }
+.modes .mode-ind { background: var(--card); border: 1px solid color-mix(in oklch, var(--ink) 14%, transparent); }
+.modes[data-am="regular"] .mode-ind { background: var(--normal); }
+.modes[data-am="regular"] button.active { color: var(--on-normal); }
+.modes[data-am="eco"] .mode-ind { background: var(--eco); }
+.modes[data-am="turbo"] .mode-ind { background: var(--turbo); }
+.modes[data-am="off"] .mode-ind { background: color-mix(in oklch, var(--ink) 14%, var(--card)); box-shadow: var(--shadow-sm); }
+.modes[data-am="off"] button.active { color: var(--ink); }
+.modes button.active, .modes button.active[data-mode] { color: var(--on-accent); }
+.mode-ind { transition: transform .45s var(--ease), background-color .3s; }
+.room-card.is-off .modes { margin-top: 12px; }
+.room-reading .tset { color: var(--ink); font-weight: 650; }
+.room-card .room-reading { flex-wrap: wrap; }
+
+/* charts */
+.chart-card { padding-bottom: 14px; }
+.chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.chart-head b { font-size: 15px; }
+.chart-wrap { position: relative; }
+.chart .hband { fill: color-mix(in oklch, var(--accent) 12%, transparent); }
+.chart .lane { fill: var(--soft); }
+.chart .lane-label { fill: var(--ink); font-size: 12px; font-weight: 550; }
+.chart .scrub line { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 3 3; opacity: .6; }
+.chart { touch-action: pan-y; }
+.readout { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; min-height: 22px; font-size: 12px; margin: 2px 0 6px; }
+.readout span { display: inline-flex; align-items: center; gap: 5px; }
+.readout i { width: 8px; height: 8px; border-radius: 2px; }
+.readout b { font-variant-numeric: tabular-nums; }
+.chart .sp-tag { fill: var(--muted); font-size: 10.5px; font-weight: 600; }
+.chart .lane-label { font-size: 12px; }
+.tip { position: absolute; top: 6px; z-index: 3; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); border-radius: 12px; padding: 8px 10px; font-size: 12px; min-width: 150px; pointer-events: none; }
+.tip b { display: block; margin-bottom: 4px; }
+.tip div { display: flex; align-items: center; gap: 6px; }
+.tip div span { margin-left: auto; font-weight: 650; font-variant-numeric: tabular-nums; padding-left: 10px; }
+.tip i { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.chart-note { margin-left: auto; color: var(--muted); font-size: 12px; }
+.chart-empty { color: var(--muted); font-size: 13px; padding: 18px 0 6px; }
+.legend label { padding: 3px 0; }
+.lg-one { display: inline-flex; align-items: center; gap: 5px; }
+.lg-one i { width: 10px; height: 10px; border-radius: 2px; }
+.seg button:disabled, .seg button:disabled:hover { opacity: .35; color: var(--muted); cursor: default; }
+
+.lead { font-size: 15px; color: var(--muted); line-height: 1.5; margin: -6px 0 8px; max-width: 62ch; }
+.st-room .row { margin-bottom: 8px; }
+.st-temp { margin-left: auto; font-size: 26px; font-weight: 300; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.st-temp small { font-size: 13px; color: var(--muted); }
+details.adv summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; align-items: center; justify-content: space-between; }
+details.adv summary::after { content: "+"; font-size: 20px; color: var(--muted); transition: transform .25s var(--ease); }
+details.adv[open] summary::after { transform: rotate(45deg); }
+details.adv summary::-webkit-details-marker { display: none; }
+details.adv .lines { margin: 12px 0; columns: 2 240px; }
+
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; color: var(--muted); font-size: 12.5px; font-weight: 550; margin-bottom: 6px; }
+.menu-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.menu-nav:empty { display: none; }
+.menu-list .ml { display: flex; flex-direction: column; gap: 2px; }
+.menu-list .ml small { color: var(--muted); font-size: 12.5px; font-weight: 450; }
+.menu-list .chev { width: 16px; height: 16px; color: var(--muted); }
+.menu-card { padding: 6px 18px; }
+.menu-card:has(.tiles), .menu-card:has(.big-value), .menu-card:has(.lines), .menu-card:has(input) { padding: 18px; }
+.menu-foot { margin-top: 16px; }
+
+/* settings, backups, notices */
+.conn { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.conn .live { width: 10px; height: 10px; }
+.radio-list { display: flex; flex-direction: column; margin-top: 12px; }
+.radio { display: flex; gap: 12px; padding: 12px 2px; border-top: 1px solid var(--line); cursor: pointer; align-items: flex-start; }
+.radio input { margin-top: 4px; width: 18px; height: 18px; }
+.radio.disabled { opacity: .5; cursor: default; }
+.field { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; font-size: 13px; font-weight: 600; }
+.field input { width: 100%; max-width: 360px; font-weight: 400; }
+.bk-list { display: flex; flex-direction: column; gap: 8px; }
+.bk { background: var(--card); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-sm); overflow: hidden; }
+.bk-row { width: 100%; display: flex; align-items: center; gap: 12px; border: 0; background: none; color: var(--ink); padding: 13px 14px; cursor: pointer; text-align: left; }
+.bk-row .chev { width: 16px; height: 16px; color: var(--muted); transition: transform .25s var(--ease); }
+.bk.open .bk-row .chev { transform: rotate(90deg); }
+.bk-ic { width: 36px; height: 36px; border-radius: 10px; background: var(--soft); display: grid; place-items: center; color: var(--muted); flex: none; }
+.bk-ic svg { width: 19px; height: 19px; }
+.bk-main { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.bk-main b::first-letter { text-transform: uppercase; }
+.bk-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 6px; padding: 0 14px 14px; animation: rise .35s var(--ease); }
+.bk-actions .btn { text-align: center; text-decoration: none; }
+.bk-progress { margin: 0 14px 14px; padding: 12px; border-radius: 12px; background: var(--soft); font-size: 13px; display: flex; gap: 8px; align-items: center; }
+.bk-result { margin: 0 14px 14px; padding: 12px 14px; border-radius: 12px; background: var(--warn-bg); animation: rise .35s var(--ease); }
+.bk-result.ok { background: color-mix(in oklch, var(--eco) 14%, var(--card)); }
+.bk-res-title { font-weight: 650; }
+.diff { margin: 8px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.mini-tl { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
+.mt { display: flex; width: 100%; max-width: 260px; height: 8px; border-radius: 4px; overflow: hidden; }
+.bk-upload { margin-top: 14px; }
+.timeline { display: flex; flex-direction: column; gap: 18px; }
+.tl-date { font-size: 12px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; margin-bottom: 6px; }
+.tl-item { display: grid; grid-template-columns: 46px 14px 1fr; align-items: center; gap: 8px; padding: 6px 0; font-size: 14px; }
+.tl-time { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px; }
+.tl-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--eco); }
+.tl-dot.warn { background: var(--normal); }
+
+.ricon { width: 40px; height: 40px; border-radius: 13px; background: var(--soft); display: grid; place-items: center; flex: none; transition: background .3s; }
+.ricon i { width: 30px; height: 30px; background: var(--ink); -webkit-mask: var(--src) center / 150% no-repeat; mask: var(--src) center / 150% no-repeat; opacity: .82; }
+.ricon.lg { width: 52px; height: 52px; border-radius: 16px; }
+.ricon.lg i { width: 40px; height: 40px; }
+.ricon.hot { background: var(--accent-soft); }
+.ricon.hot i { background: var(--accent-ink); opacity: 1; }
+.modes[data-am="off"] .mode-ind { background: color-mix(in oklch, var(--ink) 14%, var(--card)); box-shadow: var(--shadow-sm); }
+.modes[data-am="off"] button.active { color: var(--ink); }
+
+/* compact room rows on home */
+.room-card { display: flex; flex-direction: column; padding: 16px 16px 14px; }
+.rc-top { display: flex; align-items: center; gap: 12px; }
+.rc-name { flex: 1; min-width: 0; }
+.rc-name .room-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rc-sub { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sdot { width: 7px; height: 7px; border-radius: 50%; background: var(--off); flex: none; }
+.st-regular .sdot { background: var(--normal); } .st-eco .sdot { background: var(--eco); } .st-turbo .sdot { background: var(--turbo); } .st-holiday .sdot { background: var(--cool); }
+.rc-sub.st-heat { color: var(--accent-ink); font-weight: 600; }
+.rc-temp { display: flex; flex-direction: column; align-items: flex-end; }
+.rc-temp .temp { font-size: 34px; margin: 0; line-height: 1; }
+.rc-temp .temp small { font-size: 16px; }
+.rc-hum { display: inline-flex; align-items: center; gap: 3px; font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+.room-card .band { margin-top: auto; padding-top: 12px; }
+.room-card.is-off .temp { color: var(--ink); }
+.band.paused .band-bar i { opacity: .5; }
+.band-axis { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.band .needle { z-index: 1; }
+
+/* room page */
+.room-hero .row h3 { font-size: 22px; }
+.offpanel { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 26px 0 8px; gap: 6px; }
+.op-temp { font-size: 72px; font-weight: 250; letter-spacing: -0.05em; line-height: 1; font-variant-numeric: tabular-nums; }
+.op-temp small { font-size: 24px; color: var(--muted); }
+.op-label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-weight: 600; font-size: 14px; }
+.btn.big { padding: 14px 22px; font-size: 15px; border-radius: 14px; margin-top: 12px; }
+.rm-label { font-size: 12px; font-weight: 600; color: var(--muted); margin: 0 2px 6px; }
+.room-layout { display: grid; gap: 0 22px; }
+.house-list { display: flex; flex-direction: column; margin-top: 14px; }
+.house-row { display: flex; align-items: center; gap: 12px; padding: 12px 2px; border-top: 1px solid var(--line); text-decoration: none; color: var(--ink); }
+.house-row .rc-name b { display: block; font-size: 15px; }
+.hr-temp { font-size: 24px; font-weight: 280; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.house-row .chev { width: 16px; height: 16px; color: var(--muted); }
+@media (min-width: 900px) {
+  .room-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .room-side .group-title:first-child { margin-top: 0; }
+  .room-hero { position: sticky; top: 120px; }
+}
+
+.wrow { grid-template-columns: 44px 1fr; padding: 4px 0; }
+.wrow .wbar { height: 20px; border-radius: 6px; }
+.wrow .wlabel { position: relative; }
+.wrow.today .wlabel { color: var(--accent-ink); }
+.wrow .dot { position: absolute; top: -2px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.waxis { margin-left: 52px; }
+.hrow { grid-template-columns: 46px repeat(4, 1fr); gap: 3px; }
+.cell { height: 38px; padding-left: 7px; }
+.cell.hour { margin-left: 3px; }
+.cell span { font-size: 11px; }
+.dayedit { gap: 4px; }
+@media (max-width: 680px) {
+  .savebar { left: 12px; right: 12px; width: auto; transform: translateY(140%); bottom: calc(70px + env(safe-area-inset-bottom)); padding: 10px 10px 10px 16px; gap: 10px; max-width: none; }
+  .savebar.show { transform: translateY(0); }
+  .savebar > span { white-space: nowrap; font-size: 13.5px; }
+  .savebar .actions { flex-wrap: nowrap; margin-left: auto; }
+  .savebar .btn { padding: 10px 14px; }
+  .sched { padding-bottom: 70px; }
+}
+
+.mval { font-size: 13px; color: var(--muted); font-weight: 550; font-variant-numeric: tabular-nums; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.info-rows { display: flex; flex-direction: column; }
+.ir { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.ir b { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.ir.link { color: var(--accent-ink); cursor: pointer; }
+.ir-head { font-size: 12px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; margin-top: 14px; padding-bottom: 4px; }
+.ir-gap { height: 6px; }
+
+/* round 4 fixes */
+.grid > .card, .metric-groups > .card { margin-top: 0; }
+.grid { grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); }
+.rc-name .room-title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rc-temp { min-height: 52px; justify-content: flex-start; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--ink); }
+.actrow .ic { background: var(--soft); color: var(--ink); }
+.actrow a, .actrow button { width: 100%; min-width: 0; }
+.actrow .lbl { min-width: 0; }
+.room-side .actrow { grid-template-columns: 1fr; }
+@media (hover: hover) { .list button:hover:not(:disabled) { color: inherit; background: var(--soft); } }
+.list button { border-radius: 0; }
+.sw { border: 1px solid color-mix(in oklch, var(--muted) 50%, transparent); }
+.band.paused .band-bar i { opacity: 1; }
+.readout { min-height: 40px; align-content: center; }
+.readout:empty { min-height: 8px; }
+.chart .dotc { stroke: var(--card); stroke-width: 2; }
+.view-enter .offpanel { animation: rise .45s var(--ease) both; }
+.bk-actions .btn.ghost { background: transparent; box-shadow: none; }
+.bk-actions .btn.ghost.warn, .bk-danger .btn.warn { color: oklch(0.58 0.2 27); }
+
+.cell.hour::before { content: attr(data-h); position: absolute; top: 3px; right: 5px; font-size: 9.5px; font-weight: 650; color: color-mix(in oklch, var(--ink) 55%, transparent); pointer-events: none; }
+.cell.slot-turbo.hour::before { color: color-mix(in oklch, var(--on-accent) 80%, transparent); }
+.cell em { font-style: normal; font-size: 10.5px; font-weight: 750; padding: 2px 6px; border-radius: 6px; background: var(--card); color: var(--ink); pointer-events: none; }
+.cell.is-now::after { display: none; }
+.wrow { min-height: 44px; }
+.wrow .wbar { height: 22px; }
+
+.crumb { border: 0; background: none; padding: 4px 0; color: var(--muted); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+.crumb:hover { color: var(--ink); }
+
+/* live system diagram */
+.flow { display: flex; flex-direction: column; align-items: stretch; margin-top: 8px; }
+.node { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow-sm); }
+.node-h { font-size: 12px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
+.node-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); text-decoration: none; color: var(--ink); }
+.node-row:first-of-type { border-top: 0; }
+.nr-name { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.nr-name .small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nr-temp { font-size: 19px; font-variant-numeric: tabular-nums; }
+.zchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.zchip { display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px 7px 7px; border-radius: 999px; background: var(--soft); font-size: 13px; font-weight: 550; transition: background .4s, color .4s; }
+.zchip b { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--card); font-size: 12px; }
+.zchip.free { opacity: .55; }
+.zchip.on { background: var(--accent); color: var(--on-accent); box-shadow: 0 0 0 4px color-mix(in oklch, var(--accent) 22%, transparent); }
+.zchip.on b { background: color-mix(in oklch, var(--on-accent) 25%, transparent); }
+.node-note { margin: 10px 0 0; }
+.node-state { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; color: var(--muted); }
+.node-state.on { color: var(--accent-ink); }
+.pipe { align-self: center; width: 4px; height: 26px; border-radius: 2px; background: var(--line); }
+.pipe.on { background: repeating-linear-gradient(180deg, var(--accent) 0 8px, color-mix(in oklch, var(--accent) 35%, transparent) 8px 16px); background-size: 100% 32px; animation: flow-v 1s linear infinite; box-shadow: 0 0 12px color-mix(in oklch, var(--accent) 45%, transparent); }
+@keyframes flow-v { to { background-position: 0 32px; } }
+@keyframes flow-h { to { background-position: 32px 0; } }
+@media (min-width: 900px) {
+  .flow { flex-direction: row; align-items: center; }
+  .flow .node { flex: 1.3; align-self: stretch; }
+  .flow .node-sm { flex: 1; align-self: center; }
+  .pipe { width: 34px; height: 4px; flex: none; }
+  .pipe.on { background: repeating-linear-gradient(90deg, var(--accent) 0 8px, color-mix(in oklch, var(--accent) 35%, transparent) 8px 16px); background-size: 32px 100%; animation-name: flow-h; }
+}
+
+.band-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: 12px; color: var(--muted); }
+.band-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.band-legend .sw { width: 10px; height: 10px; }
+.zrow { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); }
+.zrow:first-of-type { border-top: 0; }
+.zled { width: 10px; height: 10px; border-radius: 50%; background: var(--line); flex: none; transition: background .4s, box-shadow .4s; }
+.zrow.on .zled { background: var(--accent); box-shadow: 0 0 0 4px color-mix(in oklch, var(--accent) 22%, transparent); }
+.zr-name { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.zr-state { font-size: 13px; color: var(--muted); font-weight: 550; }
+.zrow.on .zr-state { color: var(--accent-ink); }
+@media (min-width: 900px) {
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hero { justify-content: flex-start; gap: 40px; }
+}
+
+.sched { grid-template-areas: "side main" "sum main"; }
+.sched-side { grid-area: side; } .sched-main { grid-area: main; } .sched-sum { grid-area: sum; }
+.hrow { grid-template-columns: 52px 1fr 1fr; }
+.hhead { font-size: 11px; color: var(--muted); font-weight: 650; position: sticky; top: var(--hdr, 56px); z-index: 2; background: var(--bg); padding: 6px 0; margin: 0 -4px; padding-left: 4px; box-shadow: 0 6px 6px -6px color-mix(in oklch, var(--ink) 20%, transparent); }
+.hhead span { padding-left: 7px; }
+.cell { height: 28px; }
+@media (min-width: 861px) { .sched-side { position: sticky; top: calc(var(--hdr, 104px) + 12px); } }
+.hint.spread { margin: 10px 2px; }
+@media (max-width: 860px) { .sched { grid-template-areas: "side" "main" "sum"; } .sched-sum { margin-top: 16px; } }
+
+.modes button small { display: block; font-size: 10.5px; font-weight: 550; opacity: .8; margin-top: 1px; font-variant-numeric: tabular-nums; }
+.modes button:has(small) { padding: 7px 0; }
+
+.off-modes { margin-top: 18px; }
+.off-modes .rm-label { text-align: center; color: var(--ink); font-size: 13px; }
+.lg { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; color: var(--ink); font: inherit; font-size: 12.5px; padding: 4px 2px; cursor: pointer; }
+.lg i { width: 12px; height: 12px; border-radius: 3px; transition: opacity .2s; }
+.lg.off { color: var(--muted); }
+.lg.off i { opacity: .25; }
+/* sheets: grabber and labelled field */
+@media (max-width: 680px) { dialog::before { content: ""; display: block; width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: -10px auto 14px; } }
+#dlgLabel { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 12px; }
+#dlgLabel:empty { display: none; }
+
+.menu-list button { justify-content: flex-start; }
+.menu-list button > .row { margin-left: auto; }
+.mic { width: 32px; height: 32px; border-radius: 9px; background: var(--soft); display: grid; place-items: center; flex: none; color: var(--ink); }
+.mic svg { width: 17px; height: 17px; }
+.danger-row .mic { background: color-mix(in oklch, var(--turbo) 16%, var(--card)); color: var(--turbo); }
+.danger-row .ml > span:first-child { color: var(--turbo); }
+.home-top { display: grid; gap: 0 32px; }
+@media (min-width: 900px) { .home-top { grid-template-columns: minmax(0, 1fr) minmax(0, 420px); align-items: center; margin-bottom: 12px; } .home-top .hero { padding-bottom: 6px; flex-direction: column; align-items: flex-start; gap: 14px; } }
+@media (max-width: 899px) { .home-top .all-rooms { display: none; } }
+@media (min-width: 900px) { .all-rooms.mobile-only { display: none; } }
+.all-rooms .modes { max-width: none; }
+
+/* focus only for keyboards, hover only for pointers */
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 8px; }
+.actrow a:hover, .actrow button:hover { border-color: var(--line); }
+@media (hover: hover) { .actrow a:hover, .actrow button:hover { border-color: color-mix(in oklch, var(--ink) 30%, var(--line)); } }
+.modes button small { min-height: 1.2em; }
+.forecast { text-align: center; font-size: 13px; color: var(--muted); margin: 10px 8px 0; line-height: 1.45; }
+.forecast b { color: var(--ink); font-weight: 600; }
+
+.paintbar { position: sticky; top: var(--hdr, 56px); z-index: 3; background: var(--bg); padding: 8px 0 2px; margin: 0 -4px; padding-left: 4px; padding-right: 4px; box-shadow: 0 8px 8px -8px color-mix(in oklch, var(--ink) 25%, transparent); }
+.paintbar .hhead { position: static; box-shadow: none; margin: 4px 0 0; padding: 4px 0 2px; }
+.paintbar .hint.spread { margin: 8px 2px 4px; }
+.same-days { display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
+.sched { grid-template-rows: auto 1fr; align-items: start; }
+.sched-sum { align-self: start; }
+/* backups: safe actions first, destructive ones apart */
+.bk-actions { grid-template-columns: repeat(3, 1fr); }
+.bk-danger { display: flex; gap: 6px; justify-content: flex-end; padding: 0 14px 12px; }
+.bk-progress { flex-direction: column; align-items: stretch; }
+.bk-progress .bar { width: 100%; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; margin-top: 8px; }
+.bk-progress .bar i { display: block; height: 100%; width: 0; background: var(--ink); animation: fill 55s linear forwards; }
+@keyframes fill { to { width: 96%; } }
+
+.draftbar { display: none; align-items: center; gap: 8px; margin: 8px 0 2px; padding: 8px 8px 8px 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); font-weight: 600; font-size: 13.5px; }
+.draftbar.show { display: flex; animation: rise .3s var(--ease); }
+.draftbar span { margin-right: auto; white-space: nowrap; }
+.draftbar .btn { padding: 8px 14px; }
+.ro-banner { display: flex; align-items: center; gap: 8px; background: var(--soft); color: var(--muted); border-radius: 12px; padding: 9px 14px; font-size: 13px; margin-bottom: 14px; }
+
+.ricon.sm { width: 32px; height: 32px; border-radius: 9px; }
+.ricon.sm i { width: 24px; height: 24px; }
+.node-state { color: var(--ink); }
+.node-state.on { color: var(--accent-ink); }
+.timeline { margin-top: 18px; }
+
+.paintslot { height: 52px; display: flex; align-items: center; margin: 4px 0; }
+.paintslot > * { width: 100%; }
+.paintslot .draftbar { margin: 0; }
+.paintslot .hint.spread { margin: 0 2px; }
+
+.bk-progress .bar.determinate { display: block; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.bk-progress .bar.determinate i { display: block; height: 6px; animation: none; width: 2%; background: var(--ink); transition: width 1.2s var(--ease); }
+.bk-result.err { background: color-mix(in oklch, oklch(0.58 0.2 27) 10%, var(--card)); }
+
+.stale-data .temp, .stale-data .hero-temp, .stale-data .op-temp, .stale-data .g-temp, .stale-data .nr-temp, .stale-data .hr-temp { opacity: .45; transition: opacity .4s; }
+.stale-data .modes, .stale-data .setpoint, .stale-data .dial-controls { opacity: .5; }
+
+.small-note { font-size: 12px; margin-top: 6px; }
+.rdot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-left: 7px; vertical-align: 2px; }
+.crumb-back { display: none; }
+.crumb-sep { display: inline-flex; color: var(--muted); }
+@media (max-width: 680px) {
+  .crumbs .crumb-far, .crumbs .crumb-far + .crumb-sep { display: none; }
+  .crumbs .crumb-sep { display: none; }
+  .crumbs .crumb-back { display: inline-block; width: 14px; height: 14px; }
+}
+@media (min-width: 900px) { .menu-card, .menu-nav, .menu-foot, .crumbs, #view > .page-head:has(+ .menu-card) { max-width: 720px; } }
+#themeSeg { min-width: 240px; }
+#themeSeg button { flex: 1; }
+.hr-temp small { font-size: 14px !important; vertical-align: 10px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar"><a href="#/" class="brand"><h1>°<span>CALEON</span></h1></a><div class="meta" id="meta">Conectando…</div></div>
+  <nav id="nav"></nav>
+</header>
+<main id="view"></main>
+<nav class="tabbar" id="tabbar" aria-label="Secciones"></nav>
+<dialog id="dlg"><form method="dialog">
+  <div id="dlgTitle" style="font-weight:600"></div><div id="dlgText" class="muted small"></div>
+  <label id="dlgLabel" for="dlgInput"></label><input id="dlgInput">
+  <div id="dlgPresets" class="presets"></div>
+  <div class="actions" style="justify-content:flex-end">
+    <button class="btn" value="cancel">Cancelar</button><button class="btn primary" value="ok" id="dlgOk">Aceptar</button>
+  </div>
+</form></dialog>
+
+<script>
+"use strict";
+const MODES = [["off", "Apagado"], ["regular", "Normal"], ["eco", "Eco"], ["turbo", "Confort"]];
+const MODE_LABEL = {off: "Apagado", regular: "Normal", eco: "Eco", turbo: "Confort", on: "Encendido", hws_on: "ACS on", hws_off: "ACS off"};
+const DAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+const ROOM_TYPES = {
+  living: "Salón", dining: "Comedor", kitchen: "Cocina", bedroom1: "Dormitorio 1", bedroom2: "Dormitorio 2", bedroom3: "Dormitorio 3",
+  childrens1: "Infantil 1", childrens2: "Infantil 2", childrens3: "Infantil 3", bathroom1: "Baño 1", bathroom2: "Baño 2",
+  bathroom3: "Baño 3", bathroom4: "Baño 4", office1: "Despacho 1", office2: "Despacho 2", corridor1: "Pasillo 1", corridor2: "Pasillo 2",
+  attic: "Ático", cellar: "Sótano", cellar2: "Sótano 2", boiler_room: "Sala de calderas", craft_room: "Taller", food_storage: "Despensa",
+  laundry: "Lavandería", libary: "Biblioteca", locker: "Trastero", pool: "Piscina", walkin_wardrobe: "Vestidor", wardrobe: "Armario",
+  floorfirst: "Primera planta", floorground: "Planta baja", outdoor: "Exterior", home: "Toda la casa",
+};
+const SYSTEM = 65535;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const num = s => { const m = /-?\d+(?:[.,]\d+)?/.exec(s || ""); return m ? parseFloat(m[0].replace(",", ".")) : null; };
+const palette = () => getComputedStyle(document.documentElement).getPropertyValue("--series").split(",").map(s => s.trim());
+const ricon = (r, cls = "") => `<span class="ricon ${isHeating(r) ? "hot" : ""} ${cls}" style="--src:url('/icons/${esc(r.type || "room01")}.svg?mask=1')" aria-hidden="true"><i></i></span>`;
+const sensorRoom = label => { const n = S.sensors && S.sensors[label]; return n ? S.rooms.find(r => r.name === n) : null; };
+const modeTemp = (r, mode) => { const v = S.mode_temps && S.mode_temps[String(r.id)] && S.mode_temps[String(r.id)][mode]; return v === undefined ? null : v; };
+const modeWithTemp = (r, mode) => { const t = modeTemp(r, mode); return `${MODE_LABEL[mode] || mode}${t !== null ? ` ${fmtC(t)}°` : mode === "off" ? "" : " · sin dato aún"}`; };
+const isDefaultName = n => !n || /^habitaci[oó]n\s*\d+$/i.test(n.trim());
+const roomTitle = r => r.id == SYSTEM ? "Toda la casa" : isDefaultName(r.name) ? (typeLabel(r.type) || r.name) : r.name;
+const roomSub = r => r.id == SYSTEM ? "Todas las habitaciones" : isDefaultName(r.name) ? r.name : typeLabel(r.type);
+const typeLabel = t => ROOM_TYPES[t] || (/^room(\d+)$/.test(t || "") ? "Habitación " + Number(t.slice(4)) : t || "");
+const es = text => String(text ?? "").replace(/(\d)\.(\d)/g, "$1,$2").replace(/(\d)(°C|%)/g, "$1 $2").replace(/% RH\b/g, "% HR");
+const fmtTime = ts => new Date(ts * 1000).toLocaleString("es-ES", {dateStyle: "short", timeStyle: "short"});
+
+const IC = {
+  home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+  pulse: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+  chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  archive: '<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4"/>',
+  bell: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  chevron: '<path d="m9 6 6 6-6 6"/>', back: '<path d="m15 6-6 6 6 6"/>',
+  flame: '<path d="M12 3s5 4.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-4 1.5-4s.5 2 2 2c0-3 1.5-5 1.5-8z"/>',
+  drop: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  plane: '<path d="M10.5 13.5 3 11l1.5-1.5 7.5 1L16 6.5a2.1 2.1 0 0 1 3 3L15 13.5l1 7.5L14.5 22.5 12 15z"/>',
+  pencil: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>',
+  swap: '<path d="M7 7h12l-3-3M17 17H5l3 3"/>',
+  power: '<path d="M12 3v8M6.3 6.3a8 8 0 1 0 11.4 0"/>',
+  check: '<path d="m5 12 5 5 9-10"/>',
+  chip: '<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5"/>',
+  layout: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/>',
+  leaf: '<path d="M5 19c0-8 5-14 15-14 0 10-6 15-14 15M5 19l7-7"/>',
+  thermo: '<path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/>',
+  shield: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  warn: '<path d="M12 3 2 20h20zM12 10v4M12 17h0"/>',
+  wifi: '<path d="M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h0"/>',
+  zone: '<rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/>',
+};
+const icon = (name, cls = "") => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[name]}</svg>`;
+const NAV = [["/", "Inicio", "home"], ["/status", "Instalación", "pulse"], ["/charts", "Gráficas", "chart"], ["/menu", "Experto", "sliders"],
+  ["/backups", "Copias", "archive"], ["/info", "Avisos", "bell"], ["/settings", "Ajustes", "gear"]];
+const TABS = ["/", "/status", "/charts", "/menu", "/settings"];
+$("#nav").innerHTML = NAV.map(([h, l, i]) => `<a href="#${h}">${icon(i)}<span class="nav-label">${l}</span></a>`).join("");
+$("#tabbar").innerHTML = NAV.filter(n => TABS.includes(n[0])).map(([h, l, i]) => `<a href="#${h}">${icon(i)}<span>${l}</span></a>`).join("");
+
+function applyTheme(t) {
+  try { if (t) localStorage.setItem("caleon.theme", t); } catch (e) {}
+  let v = "system"; try { v = localStorage.getItem("caleon.theme") || "system"; } catch (e) {}
+  if (v === "system") document.documentElement.removeAttribute("data-theme"); else document.documentElement.dataset.theme = v;
+  return v;
+}
+applyTheme();
+const setHdr = () => document.documentElement.style.setProperty("--hdr", document.querySelector("header").offsetHeight + "px");
+setHdr(); window.addEventListener("resize", setHdr);
+
+let S = null;            // last /api/state
+let timers = [];         // intervals owned by the current view
+let roomBusy = new Set();
+
+// An answer that arrives after the user has left the page that asked for it never settles, so
+// the view code waiting on it can't draw into the next page. Calls that update global state
+// (S, a room change) pass {any: true}.
+const STALE = new Promise(() => {});
+async function api(path, opts = {}) {
+  const seq = navSeq;
+  const init = {method: opts.method || (opts.body !== undefined ? "POST" : "GET"), headers: {}};
+  if (opts.body !== undefined) { init.headers["Content-Type"] = "application/json"; init.body = JSON.stringify(opts.body); }
+  const r = await fetch(path, init);
+  const data = await r.json().catch(() => ({}));
+  if (!opts.any && seq !== navSeq) return STALE;
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+
+const shortErr = m => String(m || "").replace(/^(No se pudo \w+|No se aplicó)\s*[:·]\s*/i, "").replace(/^Modo solo lectura:.*$/i, "modo solo lectura").replace(/^[a-z_0-9]+\.json:\s*/i, "").replace(/:? ?sin respuesta del equipo/i, "el termostato no respondió").replace(/\s+/g, " ").slice(0, 110);
+function toast(msg, ms = 3500) {
+  if (/^(No se pudo|No se aplicó|Modo solo lectura)/i.test(msg)) msg = "No se aplicó · " + shortErr(msg);
+  const t = document.createElement("div"); t.className = "toast"; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), ms);
+}
+
+function ask({title, text = "", value = "", input = true, ok = "Aceptar", type = "text", presets = [], label = "", max = 0}) {
+  return new Promise(resolve => {
+    const d = $("#dlg");
+    $("#dlgTitle").textContent = title; $("#dlgText").textContent = text; $("#dlgOk").textContent = ok;
+    const inp = $("#dlgInput"); inp.hidden = !input; inp.type = type; inp.value = value;
+    $("#dlgLabel").textContent = input ? label : ""; if (max) inp.maxLength = max; else inp.removeAttribute("maxlength");
+    const pr = $("#dlgPresets");
+    pr.innerHTML = presets.map(([label], i) => `<button type="button" class="chip" data-p="${i}">${esc(label)}</button>`).join("");
+    pr.onclick = ev => { const b = ev.target.closest("[data-p]"); if (!b) return; inp.value = presets[Number(b.dataset.p)][1];
+      pr.querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c === b)); };
+    pr.querySelectorAll(".chip").forEach((c, i) => c.classList.toggle("active", presets[i][1] === value));
+    d.onclose = () => resolve(d.returnValue === "ok" ? (input ? inp.value : true) : null);
+    inp.autofocus = false;
+    d.showModal();
+    if (type !== "text") { d.tabIndex = -1; d.focus(); }
+  });
+}
+const localInput = d => { const p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
+function vacationPresets() {
+  const at = (days, h) => { const d = new Date(); d.setDate(d.getDate() + days); d.setHours(h, 0, 0, 0); return d; };
+  const sunday = (7 - new Date().getDay()) % 7 || 7;
+  return [["Mañana", localInput(at(1, 18))], ["Este domingo", localInput(at(sunday, 18))], ["Una semana", localInput(at(7, 18))], ["Dos semanas", localInput(at(14, 18))]];
+}
+
+let viewRefresh = null;
+const onRefresh = fn => { viewRefresh = fn; };
+const ago = secs => secs < 90 ? "ahora mismo" : secs < 3600 ? `hace ${Math.round(secs / 60)} min` : `hace ${Math.round(secs / 3600)} h`;
+function paintMeta() {
+  if (!S) return;
+  const age = S.updated ? Date.now() / 1000 - S.updated : 1e9;
+  const cls = S.error || age > 300 ? "err" : age > 120 ? "stale" : "";
+  const t = S.updated ? new Date(S.updated * 1000).toLocaleTimeString("es-ES", {hour: "2-digit", minute: "2-digit"}) : "—";
+  const text = S.crawling ? "Leyendo la configuración…" : S.error ? "El termostato no responde" : age > 120 ? `Datos de ${ago(age)}` : `Actualizado ${t}`;
+  $("#meta").innerHTML = `<span class="live ${cls}"></span><span>${text}</span>`;
+  $("#meta").title = `${S.device} · firmware ${S.firmware || "?"} · última lectura ${t}`;
+}
+async function loadState() {
+  try { S = await api("/api/state", {any: true}); }
+  catch (e) { $("#meta").innerHTML = `<span class="live err"></span><span>Sin conexión con el servidor</span>`; return S; }
+  paintMeta();
+  return S;
+}
+// Background refreshes redraw the page from scratch: carry over what the user had open,
+// focused and scrolled to, and keep the old chart drawing until the new one is ready.
+function keepViewState(fn) {
+  const v = $("#view"), y = window.scrollY;
+  const open = new Set([...v.querySelectorAll("details[open] > summary")].map(x => x.textContent.trim()));
+  const a = document.activeElement, keyOf = el => el && v.contains(el) && el !== v
+    ? ["id", "data-room", "data-act", "data-v", "data-href", "data-i"].map(k => el.getAttribute(k) || "").join("|") + "|" + (el.closest("[data-room]")?.dataset.room || "") : null;
+  const focus = keyOf(a);
+  const svgs = new Map([...v.querySelectorAll("svg[id]")].map(x => [x.id, x.innerHTML]));
+  const r = fn();
+  v.querySelectorAll("details > summary").forEach(x => { if (open.has(x.textContent.trim())) x.parentElement.open = true; });
+  v.querySelectorAll("svg[id]").forEach(x => { if (!x.childElementCount && svgs.get(x.id)) x.innerHTML = svgs.get(x.id); });
+  if (focus) { const el = [...v.querySelectorAll("button, a, [tabindex], input, select")].find(e => keyOf(e) === focus); if (el) el.focus({preventScroll: true}); }
+  if (Math.abs(window.scrollY - y) > 1) window.scrollTo(0, y);
+  return r;
+}
+const refreshView = () => { if (viewRefresh) keepViewState(viewRefresh); };
+const reloadView = async () => { await loadState(); refreshView(); };
+setInterval(reloadView, 15000);
+// the server rereads the thermostat 5, 15 and 30 s after a change: follow it
+let rereadTimers = [];
+function rereadSoon() {
+  rereadTimers.forEach(clearTimeout);
+  rereadTimers = [7, 18, 33].map(s => setTimeout(reloadView, s * 1000));
+}
+setInterval(paintMeta, 30000);
+
+function banner() {
+  if (!S) return "";
+  const ro = S.read_only ? `<div class="ro-banner">${icon("lock", "mini")} Modo solo lectura: puedes mirarlo todo, pero este servidor no cambia el termostato.</div>` : "";
+  return ro + bannerCore();
+}
+function outageSince() { return S && S.updated ? new Date(S.updated * 1000).toLocaleTimeString("es-ES", {hour: "2-digit", minute: "2-digit"}) : null; }
+function bannerCore() {
+  const age = S.updated ? Date.now() / 1000 - S.updated : 1e9;
+  document.getElementById("view").classList.toggle("stale-data", !!S.error || age > 180);
+  if (S.error || age > 180) return `<div class="banner">${icon("warn", "mini")} ${outageSince() ? `No hay respuesta del termostato desde las ${outageSince()}.` : "No hay respuesta del termostato."} Lo que ves son los últimos datos; sigo intentándolo.</div>`;
+
+  if (S.crawling) return `<div class="banner"><span class="spin"></span> Leyendo la configuración completa del equipo (copia de seguridad)…</div>`;
+  return "";
+}
+
+// ---------- router
+
+const routes = [
+  [/^\/?$/, viewOverview], [/^\/room\/(\d+)$/, viewRoom], [/^\/timer\/(\d+)$/, viewTimer], [/^\/status$/, viewStatus],
+  [/^\/charts$/, viewCharts], [/^\/menu(?:\/(.*))?$/, viewMenu], [/^\/backups$/, viewBackups], [/^\/info$/, viewInfo], [/^\/settings$/, viewSettings],
+];
+
+const seenViews = new Set();
+const SKELETON = `<div class="skel-stack"><div class="skel" style="height:150px"></div><div class="skel" style="height:240px"></div><div class="skel" style="height:96px"></div></div>`;
+const depthOf = p => p.startsWith("/timer") ? 2 : p.startsWith("/room") ? 1 : 0;
+let lastPath = null, enterTimer = null, vtRoom = null, vtPending = false;
+const scrollMem = {};
+document.addEventListener("click", ev => { const c = ev.target.closest("[data-href]"); if (c && c.dataset.room) { vtRoom = c.dataset.room; const t = c.querySelector("[data-vt]"); if (t) t.style.viewTransitionName = "room-temp"; } }, true);
+if (!document.startViewTransition) document.documentElement.classList.add("no-vt");
+const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+let navSeq = 0, leaveGuard = null, routing = false;
+async function route() {
+  const path0 = location.hash.replace(/^#/, "") || "/";
+  // a page with unsaved work (the schedule painter) can ask before it is left
+  if (leaveGuard && lastPath !== null && path0 !== lastPath && !routing) {
+    const back = lastPath; routing = true;
+    const ok = await leaveGuard();
+    routing = false;
+    if (!ok) { history.replaceState(null, "", "#" + back); return; }
+  }
+  leaveGuard = null;
+  // a dialog belongs to the page that opened it: closing resolves its promise with null
+  const dlg = $("#dlg"); if (dlg && dlg.open) { dlg.returnValue = ""; dlg.close(); }
+  navSeq++;
+  timers.forEach(clearInterval); timers = []; viewRefresh = null;
+  const path = location.hash.replace(/^#/, "") || "/";
+  document.querySelectorAll("#nav a, #tabbar a").forEach(a => {
+    const p = a.getAttribute("href").slice(1);
+    const inMore = ["/backups", "/info"].some(x => path.startsWith(x)) && p === "/settings" && a.closest("#tabbar");
+    a.classList.toggle("active", inMore || (p === "/" ? path === "/" || path.startsWith("/room") || path.startsWith("/timer") : path.startsWith(p)));
+  });
+  const match = routes.map(([re, fn]) => [path.match(re), fn]).find(([m]) => m);
+  if (!match) { location.hash = "#/"; return; }
+  if (!S) await loadState();
+  const [m, fn] = match;
+  if (lastPath !== null) scrollMem[lastPath] = window.scrollY;
+  const rm = /^\/room\/(\d+)$/.exec(path); if (rm) vtRoom = rm[1];
+  const d0 = lastPath === null ? 0 : depthOf(lastPath), d1 = depthOf(path);
+  document.documentElement.dataset.nav = lastPath === null ? "same" : d1 > d0 ? "forward" : d1 < d0 ? "back" : "same";
+  lastPath = path;
+  const swap = () => {
+    const v = $("#view");
+    v.classList.remove("view-enter"); void v.offsetWidth;
+    const key = path.replace(/\/\d+$/, "/:id");
+    if (document.documentElement.dataset.nav !== "back" && !seenViews.has(key)) v.classList.add("view-enter");
+    seenViews.add(key);
+    v.innerHTML = SKELETON;
+    fn(...m.slice(1));
+    // name exactly one element on each side of the transition: the tapped room's temperature
+    const hero = v.querySelector("[data-vt-hero]");
+    if (hero) hero.style.viewTransitionName = "room-temp";
+    if (vtRoom !== null) { const t = v.querySelector(`[data-vt="${vtRoom}"]`); if (t) t.style.viewTransitionName = "room-temp"; }
+    if (!path.startsWith("/room")) vtRoom = path === "/" ? vtRoom : null;
+    window.scrollTo(0, document.documentElement.dataset.nav === "back" ? (scrollMem[path] || 0) : 0);
+    clearTimeout(enterTimer);
+    enterTimer = setTimeout(() => v.classList.remove("view-enter"), 1300);
+  };
+  if (document.startViewTransition && !reduceMotion()) {
+    vtPending = true;
+    const vt = document.startViewTransition(swap);
+    vt.finished.finally(() => { vtPending = false; document.querySelectorAll("[data-vt]").forEach(e => e.style.viewTransitionName = ""); });
+  } else swap();
+}
+window.addEventListener("hashchange", route);
+const every = (fn, ms) => timers.push(setInterval(fn, ms));
+
+// ---------- motion helpers: re-renders replace the DOM, so animate each value from where it was
+
+const prevUI = {};
+function tween(el, prop, from, to) {
+  if (!el || from === to || reduceMotion()) return;
+  el.style.transition = "none"; el.style[prop] = from; el.getBoundingClientRect();
+  el.style.transition = ""; requestAnimationFrame(() => { el.style[prop] = to; });
+}
+function tweenModes(root = document) {
+  root.querySelectorAll(".modes[data-mid]").forEach(m => {
+    const key = "mode:" + m.dataset.mid, i = Number(m.dataset.i), ind = m.querySelector(".mode-ind");
+    if (key in prevUI && i >= 0 && prevUI[key] >= 0) tween(ind, "transform", `translateX(calc(${prevUI[key]} * (100% + 5px)))`, `translateX(calc(${i} * (100% + 5px)))`);
+    prevUI[key] = i;
+  });
+}
+function tickValues(root = document) {
+  root.querySelectorAll("[data-tick]").forEach(el => {
+    const key = "tick:" + el.dataset.tick, v = num(el.textContent), p = prevUI[key];
+    if (p !== undefined && v !== null && p !== null && v !== p) el.classList.add(v > p ? "tick-up" : "tick-down");
+    prevUI[key] = v;
+  });
+}
+function tweenGauge(id) {
+  const g = document.querySelector(".gauge[data-pct]");
+  if (!g) return;
+  const now = {pct: Number(g.dataset.pct), sA: Number(g.dataset.sa), tA: Number(g.dataset.ta)};
+  const key = "gauge:" + id, prev = prevUI[key] || {pct: 0, sA: 0, tA: now.tA};
+  prevUI[key] = now;
+  tween(g.querySelector(".g-fill"), "strokeDashoffset", String(100 - prev.pct), String(100 - now.pct));
+  tween(g.querySelector(".g-rot.set"), "transform", `rotate(${prev.sA}deg)`, `rotate(${now.sA}deg)`);
+  tween(g.querySelector(".g-rot.temp"), "transform", `rotate(${prev.tA}deg)`, `rotate(${now.tA}deg)`);
+}
+
+// ---------- room helpers
+
+function roomById(id) { return id == SYSTEM ? {...(S.system || {}), id: SYSTEM, name: "Todas las habitaciones", type: "home"} : S.rooms.find(r => r.id == id); }
+
+function modeBadge(r) {
+  if (r.vacation) return `<span class="badge holiday">Vacaciones hasta ${esc(r.vacation)}</span>`;
+  const [mode, countdown] = (r.mode || "").split(" ");
+  if (!mode) return "";
+  return `<span class="badge ${esc(mode)}">${esc(MODE_LABEL[mode] || mode)}${countdown ? " · " + esc(countdown) : ""}</span>`;
+}
+
+function heatBadge(r) {
+  const on = (r.outputs || []).filter(o => o.on);
+  if (!on.length) return "";
+  return `<span class="badge heat" title="${esc(on.map(o => o.label).join(", "))}">Calentando</span>`;
+}
+
+const fmtC = v => v === null || v === undefined ? "--" : v.toFixed(1).replace(".", ",");
+const modeOf = r => (r.mode || "").split(" ")[0];
+const isHeating = r => (r.outputs || []).some(o => o.on);
+
+function stateLine(r) {
+  const mode = modeOf(r), sp = num(r.tset);
+  if (r.vacation) return {cls: "holiday", text: `Vacaciones hasta ${es(r.vacation)}`};
+  if (mode === "off") return {cls: "off", text: "Apagada"};
+  const cd = (r.mode || "").split(" ")[1];
+  const base = `${MODE_LABEL[mode] || mode}${cd ? " " + cd : ""} · objetivo ${fmtC(sp)}°`;
+  const n = (r.outputs || []).filter(o => o.on).length;
+  return n ? {cls: "heat", text: `Calentando${n > 1 ? ` · ${n} circuitos` : ""} · objetivo ${fmtC(sp)}°`} : {cls: mode, text: base};
+}
+
+function unknownModesNote(r) {
+  const missing = ["eco", "turbo"].filter(m => modeTemp(r, m) === null).map(m => MODE_LABEL[m]);
+  if (!missing.length) return "";
+  return `<p class="forecast small-note">${missing.join(" y ")}: su temperatura aparecerá cuando la habitación pase un rato en ese modo. El termostato no la comunica de otra forma.</p>`;
+}
+
+function forecast(r) {
+  const t = num(r.temperature), mode = modeOf(r), sp = num(r.tset);
+  if (t === null || r.vacation) return "";
+  if (mode === "off") {
+    const nt = modeTemp(r, "regular");
+    if (nt === null) return "";
+    return t >= nt ? `En Normal (<b>${fmtC(nt)}°</b>) no calentaría ahora: la habitación ya está a ${fmtC(t)}°.`
+      : `En Normal (<b>${fmtC(nt)}°</b>) empezaría a calentar: ahora está a ${fmtC(t)}°.`;
+  }
+  if (sp === null) return "";
+  if (isHeating(r)) return `Calentando hasta <b>${fmtC(sp)}°</b>.`;
+  if (t >= sp) return `No calienta: ya está a ${fmtC(t)}°, por encima de su objetivo de <b>${fmtC(sp)}°</b>.`;
+  return `Por debajo de su objetivo (<b>${fmtC(sp)}°</b>), pero ahora mismo no está calentando.`;
+}
+
+function roomControls(r, {compact = false} = {}) {
+  const mode = modeOf(r);
+  const canAdjust = r.id != SYSTEM && mode !== "off" && !r.vacation;
+  const sp = r.id == SYSTEM || compact === "modes" ? "" : `
+    <div class="setpoint">
+      <button class="round" data-act="tdelta" data-v="-1" ${canAdjust ? "" : "disabled"} aria-label="Bajar consigna medio grado">−</button>
+      <div><div class="label">${mode === "off" ? "Apagada" : "Consigna"}</div><div class="value" data-tick="set${r.id}">${mode === "off" ? "—" : esc((r.tset || "—").replace(".", ","))}</div></div>
+      <button class="round" data-act="tdelta" data-v="1" ${canAdjust ? "" : "disabled"} aria-label="Subir consigna medio grado">+</button>
+    </div>`;
+  const idx = MODES.findIndex(([k]) => k === mode);
+  return `${sp}<div class="modes ${idx < 0 ? "no-active" : ""}" role="group" aria-label="Modo" data-mid="${r.id}" data-i="${idx}" data-am="${idx < 0 ? "" : mode}"><span class="mode-ind" style="transform:translateX(calc(${Math.max(idx, 0)} * (100% + 5px)))"></span>${MODES.map(([k, label]) =>
+    `<button data-act="mode" data-v="${k}" data-mode="${k}" class="${k === mode ? "active" : ""}" aria-pressed="${k === mode}" ${r.vacation ? "disabled" : ""}>${label}${r.id != SYSTEM ? `<small>${k === "off" ? "&nbsp;" : modeTemp(r, k) !== null ? fmtC(modeTemp(r, k)) + "°" : "–°"}</small>` : ""}</button>`).join("")}</div>`;
+}
+
+async function roomChange(id, body, rerender) {
+  // the answer can arrive after the user has left the page: then the new page redraws itself
+  const seq = navSeq, redraw = () => { if (seq === navSeq) rerender(); };
+  const room = roomById(id), before = room && {mode: room.mode, tset: room.tset};
+  if (room && body.mode) room.mode = body.mode;
+  if (room && body.tdelta) { const t = num(room.tset); if (t !== null) room.tset = (t + 0.5 * body.tdelta).toFixed(1) + "°C"; }
+  if (id == SYSTEM && body.mode && S.system) S.system.mode = body.mode;
+  roomBusy.add(Number(id)); redraw();
+  try {
+    const st = await api(`/api/rooms/${id}`, {body, any: true});
+    if (st.state) { S = st.state; paintMeta(); delete st.state; }
+    if (id == SYSTEM) S.system = st; else Object.assign(roomById(id), st);
+    rereadSoon();
+    if (navigator.vibrate) navigator.vibrate(8);
+  } catch (e) {
+    if (room && before) Object.assign(room, before);
+    toast("No se pudo aplicar: " + e.message, 6000);
+  }
+  roomBusy.delete(Number(id));
+  if (seq !== navSeq) { refreshView(); return; }
+  rerender();
+  if (id == SYSTEM) refreshView();
+}
+
+// #view outlives every page: install its listeners once and point them at the current page
+let roomRerender = null, roomControlsBound = false;
+function bindRoomControls(container, rerender) {
+  roomRerender = rerender;
+  if (roomControlsBound) return;
+  roomControlsBound = true;
+  container.addEventListener("keydown", ev => {
+    const card = ev.target.closest("[data-href]");
+    if (card && ev.target === card && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); location.hash = card.dataset.href; }
+  });
+  container.addEventListener("click", ev => {
+    const b = ev.target.closest("[data-act]");
+    if (!b) {
+      const card = ev.target.closest("[data-href]");
+      if (card && !ev.target.closest("button, a, .modes, .setpoint")) location.hash = card.dataset.href;
+      return;
+    }
+    if (b.disabled) return;
+    if ($("#view").classList.contains("stale-data")) { toast("No se aplicó · el termostato no responde ahora mismo"); return; }
+    const id = b.closest("[data-room]").dataset.room;
+    if (roomBusy.has(Number(id))) return;
+    const act = b.dataset.act;
+    if (act === "tdelta") { ev.preventDefault(); roomChange(id, {tdelta: Number(b.dataset.v)}, roomRerender); }
+    else if (act === "mode") { ev.preventDefault(); roomChange(id, {mode: b.dataset.v}, roomRerender); }
+  });
+}
+
+// ---------- overview
+
+const todayIdx = () => (new Date().getDay() + 6) % 7;
+const nowSlotIdx = () => { const d = new Date(); return d.getHours() * 2 + (d.getMinutes() >= 30 ? 1 : 0); };
+function nextChange(r) {
+  if (!r.week) return null;
+  const today = todayIdx(), ns = nowSlotIdx(), cur = r.week[today][ns];
+  for (let k = 1; k <= 48 * 7; k++) {
+    const abs = today * 48 + ns + k, d = Math.floor(abs / 48) % 7, i = abs % 48, m = r.week[d][i];
+    if (m !== cur) return {mode: m, slot: i, dayOffset: Math.floor((today * 48 + ns + k) / 48) - today, now: cur};
+  }
+  return {now: cur};
+}
+function band(r, {big = false} = {}) {
+  if (!r.week) return "";
+  const slots = r.week[todayIdx()], ns = nowSlotIdx(), nc = nextChange(r), paused = modeOf(r) === "off" || !!r.vacation;
+  const when = nc && nc.mode ? `${nc.dayOffset === 0 ? "a las" : nc.dayOffset === 1 ? "mañana a las" : DAYS[(todayIdx() + nc.dayOffset) % 7].toLowerCase() + " a las"} ${hhmm(nc.slot)}` : "";
+  const next = nc && nc.mode ? `${MODE_LABEL[nc.mode] || nc.mode} ${when}` : "";
+  const caption = paused ? (r.vacation ? "Programa detenido durante las vacaciones" : big ? "Programa de hoy, detenido mientras esté apagada" : "Programa detenido")
+    : next ? `Ahora ${(MODE_LABEL[nc.now] || "").toLowerCase()} · ${next}` : `${MODE_LABEL[nc?.now] || ""} todo el día`;
+  return `<div class="band ${paused ? "paused" : ""} ${big ? "big" : ""}">
+    <div class="band-bar" role="img" aria-label="Programa de hoy">${segments(slots).map(g => `<i class="slot-${g.mode}" style="flex:${g.end - g.start}"></i>`).join("")}<b class="needle" style="left:${(ns + 0.5) / 48 * 100}%"></b></div>
+    ${big ? `<div class="band-axis"><span>0</span><span>6</span><span>12</span><span>18</span><span>24 h</span></div>
+      <div class="band-legend">${[...new Set(slots)].map(m => `<span><i class="sw slot-${m}"></i>${esc(modeWithTemp(r, m))}</span>`).join("")}</div>` : ""}
+    <div class="band-cap">${icon("clock", "mini")}<span>${esc(caption)}</span></div>
+  </div>`;
+}
+
+let histCache = {at: 0, data: null};
+async function history6h() {
+  if (Date.now() - histCache.at < 60000 && histCache.data) return histCache.data;
+  try { histCache = {at: Date.now(), data: await api("/api/history?hours=6")}; } catch (e) {}
+  return histCache.data;
+}
+/** "Todo apagado desde las 23:07", trend in °C/h over the last two hours. */
+function insights(hist) {
+  const out = {};
+  if (!hist) return out;
+  const rooms = S.rooms.filter(r => r.type !== "outdoor");
+  if (rooms.every(r => modeOf(r) === "off")) {
+    let since = 0;
+    for (const r of rooms) {
+      const rows = hist[String(r.id)] || [];
+      for (let i = rows.length - 1; i > 0; i--) if (rows[i][4] === "off" && rows[i - 1][4] !== "off") { since = Math.max(since, rows[i][0]); break; }
+    }
+    if (since) out.offSince = since;
+  }
+  const avgAt = ts => { const v = rooms.map(r => (hist[String(r.id)] || []).find(x => x[0] >= ts)).filter(Boolean).map(x => x[1]).filter(x => x !== null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+  const now = Date.now() / 1000, a = avgAt(now - 7200), b = avgAt(now - 300);
+  const first = Math.min(...rooms.map(r => (hist[String(r.id)] || [[now]])[0][0]));
+  if (a !== null && b !== null && now - first > 3000) out.trend = (b - a) / Math.min(2, (now - Math.max(first, now - 7200)) / 3600);
+  return out;
+}
+
+function homeSummary() {
+  const rooms = S.rooms.filter(r => r.type !== "outdoor");
+  const temps = rooms.map(r => num(r.temperature)).filter(v => v !== null);
+  const avg = temps.length ? temps.reduce((a, b) => a + b, 0) / temps.length : null;
+  const heating = rooms.filter(isHeating);
+  const off = rooms.filter(r => modeOf(r) === "off");
+  const hum = rooms.map(r => num(r.humidity)).filter(v => v !== null);
+  const outdoor = (S.status || []).find(m => m.label === "Exterior");
+  const ins = insights(histCache.data);
+  const fmtClock = ts => new Date(ts * 1000).toLocaleTimeString("es-ES", {hour: "2-digit", minute: "2-digit"});
+  let line;
+  if (heating.length) line = `Calentando ${heating.map(r => esc(roomTitle(r))).join(" y ")}`;
+  else if (off.length === rooms.length) line = ins.offSince ? `Todo apagado desde las ${fmtClock(ins.offSince)}` : "Calefacción apagada en toda la casa";
+  else line = "Todas las habitaciones en su temperatura";
+  const trend = ins.trend === undefined ? "" : Math.abs(ins.trend) < 0.05 ? " · estable" : ` · ${ins.trend > 0 ? "sube" : "baja"} ${fmtC(Math.abs(ins.trend))} °C/h`;
+  const upcoming = rooms.filter(r => modeOf(r) !== "off" && !r.vacation).map(r => ({r, nc: nextChange(r)})).filter(x => x.nc && x.nc.mode && x.nc.dayOffset === 0).sort((a, b) => a.nc.slot - b.nc.slot)[0];
+  return `<section class="hero">
+    <div class="hero-main">
+      <div class="hero-kicker">${heating.length ? icon("flame", "hero-ic heat") : ""}${line}</div>
+      <div class="hero-temp">${fmtC(avg)}<small>°</small></div>
+      <div class="hero-sub">media de la casa${temps.length > 1 ? ` · de ${fmtC(Math.min(...temps))} a ${fmtC(Math.max(...temps))} °C` : ""}${trend}</div>
+    </div>
+    <div class="hero-facts">
+      ${hum.length ? `<div><span>${Math.round(hum.reduce((a, b) => a + b, 0) / hum.length)} %</span>humedad</div>` : ""}
+      ${outdoor && outdoor.value !== null ? `<div><span>${fmtC(outdoor.value)}°</span>fuera</div>` : ""}
+      ${upcoming ? `<div><span>${hhmm(upcoming.nc.slot)}</span>${esc(roomTitle(upcoming.r))} a ${esc((MODE_LABEL[upcoming.nc.mode] || "").toLowerCase())}</div>` :
+        `<div><span>${rooms.length - off.length}/${rooms.length}</span>encendidas</div>`}
+    </div>
+  </section>`;
+}
+
+function roomCard(r, k = 0) {
+  const t = num(r.temperature), st = stateLine(r);
+  const hum = r.humidity && r.humidity !== "--" ? `${icon("drop", "mini")}${esc(es(r.humidity))}` : "";
+  return `<article class="card room-card ${isHeating(r) ? "heating" : ""} ${modeOf(r) === "off" ? "is-off" : ""}" style="--k:${k}" data-room="${r.id}" data-href="#/room/${r.id}" tabindex="0" aria-label="${esc(roomTitle(r))}, ${fmtC(t)} grados, ${esc(st.text)}">
+    <div class="rc-top">
+      ${ricon(r)}
+      <div class="rc-name"><div class="room-title">${esc(roomTitle(r))}<i class="rdot" style="background:${palette()[Number(r.id) % palette().length]}" title="Color en las gráficas"></i></div><div class="rc-sub st-${st.cls}">${st.cls === "heat" ? icon("flame", "mini") : `<span class="sdot"></span>`}${esc(st.text)}</div></div>
+      <div class="rc-temp"><span class="temp" data-vt="${r.id}" ${vtPending && String(r.id) === String(vtRoom) ? 'style="view-transition-name: room-temp"' : ""}>${fmtC(t)}<small>°</small></span>${hum ? `<span class="rc-hum">${hum}</span>` : ""}</div>
+    </div>
+    ${modeOf(r) === "off" || r.vacation ? "" : band(r)}
+  </article>`;
+}
+
+function viewOverview() {
+  history6h().then(h => { if (h && viewRefresh === refresh) render(); });
+  const refresh = () => { if (!roomBusy.size) render(); history6h(); };
+  const render = () => {
+    const sys = S.system ? roomById(SYSTEM) : null;
+    $("#view").innerHTML = banner() + `<div class="home-top">${homeSummary()}${sys ? `<div class="card all-rooms" data-room="${SYSTEM}">
+        <div class="row"><span class="ic-circle">${icon("home")}</span><div><div class="room-title">Toda la casa</div>
+          <div class="muted small">Un modo para todas las habitaciones</div></div></div>
+        <div style="margin-top:12px">${roomControls(sys, {compact: "modes"})}</div></div>` : ""}</div>
+      <div class="spread section-head"><h2>Habitaciones</h2></div>
+      <div class="grid stagger">${S.rooms.map((r, i) => roomCard(r, i)).join("")}</div>
+      ${sys ? `<div class="card section all-rooms mobile-only" data-room="${SYSTEM}">
+        <div class="spread"><div class="row"><span class="ic-circle">${icon("home")}</span><div><div class="room-title">Toda la casa</div>
+          <div class="muted small">Un modo para todas las habitaciones</div></div></div></div>
+        <div style="margin-top:12px">${roomControls(sys, {compact: "modes"})}</div></div>` : ""}
+      <div class="card section chart-card"><div class="chart-head"><b>Temperatura de hoy</b><a class="link-more" href="#/charts">Todas las gráficas ${icon("chevron", "mini")}</a></div>
+        <div class="chart-wrap"><svg class="chart" id="ovChart"></svg></div><div class="legend" id="ovLegend"></div></div>`;
+    drawRoomChart($("#ovChart"), $("#ovLegend"), Math.min(24, Math.max(3, historySpan() / 3600 * 1.15)), null);
+    tweenModes(); tickValues();
+  };
+  render();
+  bindRoomControls($("#view"), render);
+  onRefresh(refresh);
+}
+
+// ---------- room
+
+function gauge(r) {
+  const MIN = 5, MAX = 30, START = 135, SWEEP = 270, R = 84;
+  const mode = modeOf(r), t = num(r.temperature), sp = num(r.tset), off = mode === "off" || sp === null;
+  const frac = v => (Math.min(MAX, Math.max(MIN, v)) - MIN) / (MAX - MIN);
+  const pt = (a, rad = R) => [100 + rad * Math.cos(a * Math.PI / 180), 100 + rad * Math.sin(a * Math.PI / 180)];
+  const [x0, y0] = pt(START), [x1, y1] = pt(START + SWEEP);
+  const full = `M${x0.toFixed(2)} ${y0.toFixed(2)} A${R} ${R} 0 1 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+  const color = {turbo: "var(--turbo)", eco: "var(--eco)", regular: "var(--normal)"}[mode] || "var(--accent)";
+  const ticks = [10, 15, 20, 25].map(v => { const a = START + frac(v) * SWEEP, [ax, ay] = pt(a, R - 13), [bx, by] = pt(a, R - 18); return `<line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" stroke="var(--line)" stroke-width="2" stroke-linecap="round"/>`; }).join("");
+  const pct = off ? 0 : Math.round(frac(sp) * 1000) / 10;
+  const sA = off ? 0 : frac(sp) * SWEEP, tA = t === null ? 0 : frac(t) * SWEEP;
+  return `<div class="gauge ${off ? "off" : ""} ${isHeating(r) ? "heating" : ""}" data-pct="${pct}" data-sa="${sA}" data-ta="${tA}">
+    <svg viewBox="0 0 200 200" role="img" aria-label="Temperatura ${fmtC(t)} grados${off ? ", apagada" : ", objetivo " + fmtC(sp)}">
+      <path class="g-track" d="${full}" fill="none" stroke="var(--soft)" stroke-width="14" stroke-linecap="round"/>
+      ${off ? "" : `<path class="g-fill" d="${full}" pathLength="100" stroke-dasharray="100 200" style="stroke-dashoffset:${100 - pct}" fill="none" stroke="${color}" stroke-width="14" stroke-linecap="round"/>`}
+      ${ticks}
+      ${off ? "" : `<g class="g-rot set" style="transform:rotate(${sA}deg)"><circle cx="${x0}" cy="${y0}" r="4.5" fill="var(--card)"/></g>`}
+      ${t === null ? "" : (() => { const [ia, ib] = [pt(START, R - 11), pt(START, R + 11)]; return `<g class="g-rot temp" style="transform:rotate(${tA}deg)"><line x1="${ia[0]}" y1="${ia[1]}" x2="${ib[0]}" y2="${ib[1]}" stroke="var(--card)" stroke-width="7" stroke-linecap="round"/><line x1="${ia[0]}" y1="${ia[1]}" x2="${ib[0]}" y2="${ib[1]}" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/></g>`; })()}
+      <text x="${x0 - 6}" y="${y0 + 22}" class="g-scale">${MIN}°</text>
+      <text x="${x1 - 8}" y="${y1 + 22}" class="g-scale">${MAX}°</text>
+    </svg>
+    <div class="center">
+      <div class="g-cap">${isHeating(r) ? icon("flame", "mini heat") + " Calentando" : "Ahora"}</div>
+      <div class="g-temp" data-vt-hero style="view-transition-name: room-temp">${fmtC(t)}<small>°</small></div>
+      <div class="g-set">${off ? "Apagada" : `Objetivo <b data-tick="set${r.id}">${fmtC(sp)} °C</b>`}</div>
+    </div>
+  </div>`;
+}
+
+function actionRow(items) {
+  return `<div class="actrow stagger">${items.filter(Boolean).map(([tag, attrs, ic, label, sub], k) =>
+    `<${tag} ${attrs} style="--k:${k}"><span class="ic">${IC[ic] ? icon(ic) : `<img src="/icons/${ic}.svg" alt="">`}</span><span class="lbl">${label}${sub ? `<span class="sub">${sub}</span>` : ""}</span>${icon("chevron", "chev")}</${tag}>`).join("")}</div>`;
+}
+
+function viewRoom(id) {
+  let roomHours = bestRange([6, 24, 168, 720], 24);
+  const render = () => {
+    const r = roomById(id);
+    if (!r) { $("#view").innerHTML = `<div class="empty">No encuentro esa habitación. <a href="#/">Volver al inicio</a></div>`; return; }
+    const isSys = r.id == SYSTEM;
+    const holiday = !!r.vacation;
+    const mode = modeOf(r);
+    const canAdjust = !isSys && mode !== "off" && !holiday;
+    const seasonFeature = S.features.season_menu;
+    const outs = r.outputs || [];
+    const off = mode === "off";
+    const t = num(r.temperature);
+    const houseRows = isSys ? S.rooms.filter(x => x.type !== "outdoor").map(x => { const st = stateLine(x);
+      return `<a class="house-row" href="#/room/${x.id}">${ricon(x)}<span class="rc-name"><b>${esc(roomTitle(x))}</b><span class="rc-sub st-${st.cls}">${st.cls === "heat" ? icon("flame", "mini") : '<span class="sdot"></span>'}${esc(st.text)}</span></span><span class="hr-temp">${fmtC(num(x.temperature))}<small style="font-size:12px;color:var(--muted)">°</small></span>${icon("chevron", "chev")}</a>`; }).join("") : "";
+    $("#view").innerHTML = banner() + `
+      <a class="back" href="#/">${icon("back", "mini")} Inicio</a>
+      <div class="room-layout">
+      <div class="room-hero" data-room="${r.id}">
+        <div class="row">${ricon(r, "lg")}
+          <div><h3>${esc(roomTitle(r))}</h3><div class="rc-sub st-${stateLine(r).cls}">${isSys ? "Un modo para todas las habitaciones" : esc(stateLine(r).text)}</div></div></div>
+        ${isSys ? `<div class="house-list">${houseRows}</div>` : off ? `
+        <div class="offpanel">
+          <div class="op-temp" data-vt-hero style="view-transition-name: room-temp">${fmtC(t)}<small>°</small></div>
+          <div class="op-label">temperatura actual</div>
+          ${r.humidity && r.humidity !== "--" ? `<div class="hum-line">${icon("drop", "mini")} Humedad ${esc(es(r.humidity))}</div>` : ""}
+        </div>
+        <div class="room-modes off-modes"><div class="rm-label">Elige un modo para encenderla</div>${roomControls(r, {compact: "modes"})}${forecast(r) ? `<p class="forecast">${forecast(r)}</p>` : ""}${unknownModesNote(r)}</div>
+        ${band(r, {big: true})}` : `
+        ${gauge(r)}
+        <div class="dial-controls">
+          <button class="round" data-act="tdelta" data-v="-1" ${canAdjust ? "" : "disabled"} aria-label="Bajar el objetivo medio grado">−</button>
+          <div class="dial-hint">${holiday ? "En vacaciones" : "Medio grado por toque"}</div>
+          <button class="round" data-act="tdelta" data-v="1" ${canAdjust ? "" : "disabled"} aria-label="Subir el objetivo medio grado">+</button>
+        </div>
+        ${r.humidity && r.humidity !== "--" ? `<div class="hum-line">${icon("drop", "mini")} Humedad ${esc(es(r.humidity))}</div>` : ""}
+        ${forecast(r) ? `<p class="forecast">${forecast(r)}</p>` : ""}
+        ${band(r, {big: true})}`}
+        ${off && !isSys ? "" : `<div class="room-modes"><div class="rm-label">${isSys ? "Elige un modo para toda la casa" : "Modo"}</div>${roomControls(r, {compact: "modes"})}</div>`}
+      </div>
+      <div class="room-side">
+      <h2 class="group-title">Programación</h2>
+      ${actionRow([
+        !isSys && !holiday && ["a", `href="#/timer/${r.id}"`, "clock", "Horarios", "Programa de cada día"],
+        isSys && S.features.dhw_timer && !holiday && ["a", `href="#/timer/${r.id}"`, "clock", "Horario de agua caliente", ""],
+        !holiday ? ["button", `id="holidayOn"`, "plane", "Vacaciones", "Pausar hasta una fecha"] : ["button", `id="holidayOff"`, "plane", "Terminar vacaciones", "Hasta " + esc(es(r.vacation))],
+        seasonFeature && !holiday && ["button", `id="season"`, "swap", r.season === "cooling" ? "Pasar a calefacción" : "Pasar a refrigeración", ""],
+      ])}
+      ${!isSys && S.features.room_renaming ? `<h2 class="group-title">Habitación</h2>${actionRow([["button", `id="rename"`, "pencil", "Cambiar nombre", "Se guarda también en el termostato"]])}` : ""}
+      ${`<div class="card section chart-card"><div class="chart-head"><b>${isSys ? "Temperatura de la casa" : "Histórico"}</b>
+        ${rangeSeg("rRange", [6, 24, 168, 720], roomHours)}</div>
+        <div class="chart-wrap"><svg class="chart" id="rChart" style="height:220px"></svg></div><div class="legend" id="rLegend"></div></div>`}
+      </div></div>`;
+    tweenGauge(r.id); tweenModes(); tickValues();
+    const on = (sel, fn) => { const el = $(sel); if (el) el.onclick = fn; };
+    on("#rename", async () => {
+      const name = await ask({title: "Cambiar nombre", text: "Se guarda en el termostato, así que también lo verás en su pantalla y en la app oficial.", value: roomTitle(r), ok: "Guardar", label: "Nombre", max: 20});
+      if (name && name.trim() && name.trim() !== r.name) roomChange(r.id, {name: name.trim()}, render);
+    });
+    on("#holidayOn", async () => {
+      const presets = vacationPresets();
+      const v = await ask({title: "Vacaciones hasta…", text: modeOf(r) === "off" ? "Mientras dure, la habitación queda en modo vacaciones. Al terminar vuelve sola a su programa." : "Deja de seguir su programa hasta esa fecha y después vuelve sola a él.", type: "datetime-local", value: presets[2][1], presets, ok: "Activar", label: "Fecha y hora de vuelta"});
+      if (v) roomChange(r.id, {vacation: v.replace("T", " ").slice(0, 16)}, render);
+    });
+    on("#holidayOff", async () => { if (await ask({title: "¿Terminar las vacaciones?", input: false, ok: "Sí"})) roomChange(r.id, {vacation: null}, render); });
+    on("#season", async () => {
+      const to = r.season === "cooling" ? "heating" : "cooling";
+      if (await ask({title: to === "cooling" ? "¿Cambiar a refrigeración?" : "¿Cambiar a calefacción?", text: "El cambio de estación tarda un rato en aplicarse.", input: false, ok: "Cambiar"}))
+        roomChange(r.id, {season: to}, render);
+    });
+    const seg = $("#rRange");
+    if (seg) {
+      const who = isSys ? null : String(r.id);
+      seg.onclick = ev => { const b = ev.target.closest("button"); if (!b || b.disabled) return; roomHours = Number(b.dataset.h);
+        [...seg.children].forEach(x => x.classList.toggle("active", x === b)); drawRoomChart($("#rChart"), $("#rLegend"), roomHours, who); };
+      [...seg.children].forEach(x => x.classList.toggle("active", Number(x.dataset.h) === roomHours));
+      drawRoomChart($("#rChart"), $("#rLegend"), roomHours, who);
+    }
+  };
+  render();
+  bindRoomControls($("#view"), render);
+  onRefresh(() => { if (!roomBusy.size && !document.querySelector("dialog[open], .sheet.open")) render(); });
+}
+
+// ---------- weekly timer (room_timer.json)
+
+const hhmm = i => `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`;
+function segments(slots) {
+  const out = [];
+  slots.forEach((m, i) => { const last = out[out.length - 1]; if (last && last.mode === m) last.end = i + 1; else out.push({mode: m, start: i, end: i + 1}); });
+  return out;
+}
+
+async function viewTimer(id) {
+  const r = roomById(id);
+  if (!r) { location.hash = "#/"; return; }
+  const isSys = id == SYSTEM;
+  let type = isSys ? 2 : (r.season === "cooling" ? 1 : 0);
+  const today = (new Date().getDay() + 6) % 7;
+  let week = null, original = null, brush = null, dirty = new Set(), day = today, saving = false, copyOpen = false, draftAt = 0;
+  const load = async () => {
+    $("#view").innerHTML = `<div class="empty"><span class="spin"></span> Leyendo horarios del termostato…</div>`;
+    try { week = await api(`/api/rooms/${id}/timer?type=${type}`); }
+    catch (e) { $("#view").innerHTML = `<div class="banner">No pude leer los horarios: ${esc(e.message)}</div>`; return; }
+    original = JSON.parse(JSON.stringify(week.days)); dirty.clear();
+    brush = brush && week.modes.includes(brush) ? brush : week.modes[1];
+    render();
+  };
+  const nowSlot = () => { const d = new Date(); return d.getHours() * 2 + (d.getMinutes() >= 30 ? 1 : 0); };
+  const render = () => {
+    const slots = week.days[day];
+    const segs = segments(slots);
+    const ns = nowSlot();
+    $("#view").innerHTML = `
+      <a class="back" href="#/room/${id}">${icon("back", "mini")} ${esc(roomTitle(r))}</a>
+      <div class="page-head"><h3>${isSys ? "Agua caliente" : "Horarios"}</h3>
+        ${isSys || !(S.features.season_menu || r.season === "cooling") ? "" : `<div class="seg" id="tType"><button data-t="0" class="${type === 0 ? "active" : ""}">Calefacción</button><button data-t="1" class="${type === 1 ? "active" : ""}">Refrigeración</button></div>`}</div>
+      <div class="sched">
+        <div class="sched-side">
+          <div class="weekmini" aria-label="Semana completa">${week.days.map((sl, d) => `<button class="wrow ${d === day ? "active" : ""} ${d === today ? "today" : ""}" data-day="${d}" aria-pressed="${d === day}" aria-label="${DAYS[d]}">
+            <span class="wlabel">${DAYS[d].slice(0, 3)}${dirty.has(d) ? '<i class="dot"></i>' : ""}</span><span class="wbar">${segments(sl).map(g => `<i class="slot-${g.mode}" style="flex:${g.end - g.start}"></i>`).join("")}${d === today ? `<b class="now" style="left:${(ns + 0.5) / 48 * 100}%"></b>` : ""}</span></button>`).join("")}
+            <div class="waxis"><span>0</span><span>6</span><span>12</span><span>18</span><span>24 h</span></div>
+</div>
+        </div>
+        <div class="sched-main">
+          <div class="paintbar">
+            <div class="brushes" role="radiogroup" aria-label="Modo para pintar">${week.modes.map(m => `<button role="radio" aria-checked="${m === brush}" class="${m === brush ? "active" : ""}" data-brush="${m}"><span class="sw slot-${m}"></span>${esc(MODE_LABEL[m] || m)}</button>`).join("")}</div>
+            <div class="paintslot">${dirty.size ? `<div class="draftbar show" role="region" aria-label="Cambios sin guardar">
+              <span>${dirty.size === 1 ? "1 día cambiado" : `${dirty.size} días cambiados`}</span>
+              <button class="btn" id="tReset">Descartar</button><button class="btn primary" id="tSave" ${saving ? "disabled" : ""}>${saving ? "Guardando…" : "Guardar"}</button></div>`
+              : `<div class="hint spread"><span class="muted small">Elige un modo y ${matchMedia("(any-pointer: coarse)").matches ? "toca o arrastra" : "haz clic o arrastra"} sobre las medias horas.</span>${day === today ? `<button class="chip" id="toNow">Ir a ahora</button>` : ""}</div>`}</div>
+            <div class="hrow hhead"><span></span><span>:00</span><span>:30</span></div>
+          </div>
+          <div class="dayedit" id="dayedit">${Array.from({length: 24}, (_, h) => `<div class="hrow"><span class="hl">${String(h).padStart(2, "0")}:00</span>
+            ${[0, 1].map(k => { const i = h * 2 + k, m = slots[i], startSeg = i === 0 || slots[i - 1] !== m;
+              const isNow = day === today && i === ns;
+              return `<div class="cell slot-${m} ${isNow ? "is-now" : ""} ${original[day][i] !== m ? "changed" : ""}" data-i="${i}" role="button" aria-label="${DAYS[day]} ${hhmm(i)}, ${esc(MODE_LABEL[m] || m)}" title="${hhmm(i)}–${i === 47 ? "24:00" : hhmm(i + 1)}">${isNow ? `<em>ahora</em>` : startSeg ? `<span>${esc(MODE_LABEL[m] || m)}</span>` : ""}</div>`; }).join("")}</div>`).join("")}</div>
+        </div>
+        <div class="sched-sum">
+          <div class="daysum card">
+            <div class="spread"><b>${DAYS[day]}</b><button class="link-more" id="copyBtn">Copiar a… ${icon("chevron", "mini")}</button></div>
+            ${week.days.every(d => d.join() === week.days[0].join()) ? `<div class="same-days">${icon("check", "mini")} Los 7 días tienen el mismo horario</div>` : ""}
+            ${copyOpen ? `<div class="copyopts">${[["next", "Día siguiente"], ["31", "Lunes a viernes"], ["96", "Fin de semana"], ["127", "Toda la semana"]].map(([k, l]) => `<button class="btn" data-copy="${k}">${l}</button>`).join("")}</div>` : ""}
+            <ol class="periods">${segs.map(g => `<li><span class="sw slot-${g.mode}"></span><span class="ptime">${hhmm(g.start)}–${g.end === 48 ? "24:00" : hhmm(g.end)}</span><span class="pmode">${esc(isSys ? (MODE_LABEL[g.mode] || g.mode) : modeWithTemp(r, g.mode))}</span></li>`).join("")}</ol>
+          </div>
+        </div>
+      </div>
+`;
+    const tt = $("#tType");
+    if (tt) tt.onclick = ev => { const b = ev.target.closest("button"); if (!b || dirty.size && !confirm("Hay cambios sin guardar. ¿Descartarlos?")) return; type = Number(b.dataset.t); load(); };
+    document.querySelectorAll("[data-brush]").forEach(b => b.onclick = () => { brush = b.dataset.brush; render(); });
+    document.querySelectorAll("[data-day]").forEach(b => b.onclick = () => { day = Number(b.dataset.day); copyOpen = false; render(); });
+    $("#copyBtn").onclick = () => { copyOpen = !copyOpen; render(); };
+    const tn = $("#toNow"); if (tn) tn.onclick = () => document.querySelector(".cell.is-now")?.scrollIntoView({behavior: reduceMotion() ? "auto" : "smooth", block: "center"});
+    document.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => copy(b.dataset.copy));
+    const tr = $("#tReset"); if (tr) tr.onclick = () => { week.days = JSON.parse(JSON.stringify(original)); dirty.clear(); render(); };
+    // a tap that lands right after the bar appears is never a save
+    const ts = $("#tSave"); if (ts) ts.onclick = () => { if (Date.now() - draftAt < 600) return; save(); };
+    const ed = $("#dayedit");
+    let painting = false, pending = false, lastI = null;
+    const paintOne = i => {
+      const c = ed.querySelector(`.cell[data-i="${i}"]`);
+      if (!c || week.days[day][i] === brush) return;
+      week.days[day][i] = brush; c.className = `cell slot-${brush} changed`;
+      if (!dirty.size) draftAt = Date.now();
+      dirty.add(day); pending = true;
+    };
+    const paint = el => {
+      const c = el && el.closest && el.closest(".cell");
+      if (!c) return;
+      const i = Number(c.dataset.i);
+      // a fast drag skips cells: fill the ones in between, staying in the column (:00 or :30) it moves along
+      if (lastI !== null && (i - lastI) % 2 === 0 && Math.abs(i - lastI) > 2) { const [a, b] = i > lastI ? [lastI, i] : [i, lastI]; for (let k = a + 2; k < b; k += 2) paintOne(k); }
+      lastI = i;
+      if (week.days[day][i] === brush) return;
+      week.days[day][i] = brush;
+      if (!dirty.size) draftAt = Date.now();
+      week.days[day].some((m, k) => m !== original[day][k]) ? dirty.add(day) : dirty.delete(day);
+      pending = true;
+      c.className = `cell slot-${brush} changed`;
+    };
+    ed.onpointerdown = ev => { painting = true; ed.setPointerCapture(ev.pointerId); paint(ev.target); ev.preventDefault(); };
+    ed.onpointermove = ev => { if (painting) paint(document.elementFromPoint(ev.clientX, ev.clientY)); };
+    ed.onpointerup = ed.onpointercancel = () => { painting = false; lastI = null;
+      if (pending) { if (!week.days[day].some((m, k) => m !== original[day][k])) dirty.delete(day); pending = false; render(); } };
+  };
+  const save = async () => {
+    saving = true; render();
+    try {
+      for (const d of [...dirty].sort()) {
+        week = await api(`/api/rooms/${id}/timer/${d}?type=${type}`, {method: "PUT", body: {slots: week.days[d]}});
+        original[d] = JSON.parse(JSON.stringify(week.days[d])); dirty.delete(d);
+      }
+      toast("Horario guardado en el termostato"); rereadSoon();
+    } catch (e) { toast("No se pudo guardar: " + e.message, 6000); }
+    saving = false; render();
+  };
+  const copy = async what => {
+    if (dirty.size) { toast("Guarda o descarta los cambios antes de copiar"); return; }
+    const mask = what === "next" ? 1 << ((day + 1) % 7) : Number(what);
+    if (!confirm(`¿Copiar el horario del ${DAYS[day].toLowerCase()} a los días elegidos? Se sobrescriben.`)) return;
+    try { week = await api(`/api/rooms/${id}/timer/${day}/copy?type=${type}`, {body: {mask}}); original = JSON.parse(JSON.stringify(week.days)); copyOpen = false; render(); toast("Horario copiado"); rereadSoon(); }
+    catch (e) { toast("No se pudo copiar: " + e.message, 6000); }
+  };
+  load();
+}
+
+// ---------- device menu ("Experto"), rendered generically like the app
+
+let menuCur = null, menuTrail = [], menuValues = null, pendingEntry = null;
+const PRETTY = {"Valores fábrica": "Valores de fábrica", "Protec. antibloqueo": "Protección antibloqueo", "Fecha & Hora": "Fecha y hora", "Hora & Fecha": "Fecha y hora",
+  "Retardo activ.": "Retardo de encendido", "Retardo desactiv.": "Retardo de apagado", "Sincron. habitación": "Sincronizar habitaciones", "Interv. de transm.": "Intervalo de envío",
+  "Día V/I": "Cambio verano/invierno (normal)", "Eco V/I": "Cambio verano/invierno (eco)", "Funciones °Cbox": "Funciones de la centralita", "Circ.Calefacción": "Circuito de calefacción",
+  "Conmut. estacional 2": "Conmutación estacional 2", "Estacional estacional": "Señal estacional", "Experto": "Experto", "Ajustes": "Configuración del equipo", "Estado": "Valores del equipo", "Valores de servicio": "Valores del equipo"};
+const unent = t => { const d = document.createElement("textarea"); d.innerHTML = t ?? ""; return d.value; };
+const prettyTitle = t => { const u = unent(t); return PRETTY[u] || u; };
+const onOff = t => String(t).replace(/: ?On$/i, ": Encendido").replace(/: ?Off$/i, ": Apagado").replace(/^On$/i, "Encendido").replace(/^Off$/i, "Apagado");
+const entryPath = () => menuTrail.slice(1).map(x => x.entry);
+const MENU_ICON = {"Idioma": "globe", "Fecha & Hora": "clock", "Ajustes": "gear", "Valores de servicio": "pulse", "Bloqueo de menú": "lock", "Valores fábrica": "warn",
+  "Zonas": "zone", "WiFi": "wifi", "Habitaciones": "home", "Gestión de dispositivos": "chip", "Funciones °Cbox": "sliders",
+  "Luminosidad": "sun", "Modo de interfaz": "layout", "Sincron. habitación": "swap", "Sensor de WiFi": "wifi",
+  "Habitación": "home", "Día V/I": "sun", "Eco V/I": "leaf", "Modo de relé": "swap", "Sensor de suelo": "thermo", "Protec. antibloqueo": "shield",
+  "Salida": "chip", "Retardo activ.": "clock", "Retardo desactiv.": "clock", "Influencia habitación": "home", "Hora de verano": "sun", "Sincronización horaria": "globe",
+  "Fecha": "clock", "Hora": "clock", "Activar WiFi": "wifi", "Estado WiFi": "wifi", "Control de acceso": "lock", "SSID": "wifi", "Contraseña": "lock"};
+const MENU_DANGER = /fábrica|fabrica/i;
+const INFO_HEAD = {"Entradas": "Sensores", "Salidas": "Relés", "Privat CAN": "Red interna (CAN)", "Fecha y hora": "Fecha y hora", "Bomba circuito 116.1": "Bomba del circuito"};
+function infoLabel(label, value) {
+  const zr = zoneRooms();
+  let l = label, v = value;
+  const sr = sensorRoom(l);
+  if (sr) l = `${/HR|%/.test(v) ? "Humedad" : "Sensor"} de ${roomTitle(sr)}`;
+  else if (l === "1") l = /HR|%/.test(v) ? "Humedad del termostato" : "Sensor del termostato";
+  else if (/^\d+\.\d+$/.test(l)) l = `Sonda ${l}`;
+  else if (l === "Ida nominal") l = "Temperatura objetivo del agua";
+  else if (l === "Ida") l = "Temperatura del agua";
+  else if (l === "Modo") l = "Modo de la bomba";
+  else if (/^V$/.test(l)) l = "Versión";
+  else if (/^\d+\.N\d+$/.test(l)) l = `Entrada auxiliar ${l.split(".")[1]}`;
+  else { const z = /^\d+\.([A-Z]) Zona ([A-Z])$/.exec(l); if (z) l = `Zona ${z[2]}${zr[z[2]] ? " · " + roomTitle(zr[z[2]]) : " · sin habitación"}`;
+    else if (/^\d+\.[A-Z0-9]+ --$/.test(l)) l = `Salida ${l.split(" ")[0].split(".")[1]} · sin uso`;
+    else l = l.replace(/^\d+\.[A-Z] /, ""); }
+  if (v === "_/") v = "sin señal";
+  if (v === "--") v = "sin sonda";
+  return [l, v];
+}
+const fmtFirmware = f => { const m = /^(\d{4}-\d{2}-\d{2})\s+(\d+)$/.exec(f || ""); return m ? `${new Date(m[1] + "T12:00").toLocaleDateString("es-ES", {day: "numeric", month: "short", year: "numeric"})} (${m[2]})` : (f || "—"); };
+const fmtClockSec = t => /^\d{2}:\d{2}:\d{2}$/.test(t) ? t.slice(0, 5) : t;
+const fmtIsoDate = t => /^\d{4}-\d{2}-\d{2}$/.test(t) ? new Date(t + "T12:00").toLocaleDateString("es-ES", {weekday: "short", day: "numeric", month: "short"}) : t;
+const MENU_HELP = {
+  "Idioma": "Idioma de la pantalla del termostato",
+  "Fecha & Hora": "Reloj del equipo y cambio de hora",
+  "Ajustes": "Dispositivos, habitaciones, zonas y WiFi",
+  "Valores de servicio": "Estado, avisos y comunicaciones",
+  "Bloqueo de menú": "Proteger los ajustes con contraseña",
+  "Valores fábrica": "Volver a la configuración original",
+  "Gestión de dispositivos": "Termostatos y centralitas emparejados",
+  "Habitaciones": "Añadir o editar habitaciones",
+  "Funciones °Cbox": "Qué hace cada salida de la centralita",
+  "Zonas": "Qué habitación controla cada zona",
+  "WiFi": "Red, acceso y sensor WiFi",
+  "Día V/I": "Temperatura de cambio entre verano e invierno en modo normal",
+  "Eco V/I": "Temperatura de cambio entre verano e invierno en modo eco",
+  "Modo de relé": "Si el relé trabaja normalmente abierto o cerrado",
+  "Protec. antibloqueo": "Mueve la salida unos segundos si lleva mucho parada",
+  "Retardo activ.": "Espera antes de encender la bomba",
+  "Retardo desactiv.": "Tiempo que la bomba sigue tras apagarse",
+  "Influencia habitación": "Cuánto corrige la habitación la temperatura de impulsión",
+  "Sensor de suelo": "Sonda que limita la temperatura del suelo",
+  "Sincron. habitación": "Ver las habitaciones de otros termostatos",
+  "Modo de interfaz": "Menú completo o solo temperatura",
+  "Luminosidad": "Brillo de la pantalla",
+  "Fecha & Hora": "Reloj del equipo y cambio de hora",
+};
+async function viewMenu(root) {
+  menuCur = null; menuTrail = root === "status" ? [{id: "cal:1", title: "Experto", entry: "Experto"}] : []; pendingEntry = null;
+  if (!menuValues) api("/api/menu/values").then(v => { menuValues = v.values || {}; if (menuCur) renderMenu(); }).catch(() => { menuValues = {}; });
+  const syncHash = () => {
+    const path = entryPath();
+    const h = root === "status" && menuTrail.length <= 1 ? "#/menu/status" : "#/menu" + (path.length ? "/p/" + path.map(encodeURIComponent).join("/") : "");
+    if (location.hash !== h) history.replaceState(null, "", h);
+  };
+  const go = async (id, action) => {
+    try {
+      const r = await api("/api/menu/action", {body: {id, action}});
+      if (!(action === "" || /^goto:/.test(action) || ["back", "forward", "exit", "status"].includes(action))) rereadSoon();
+      if (!r.menu || !r.menu.id || action === "exit") { menuCur = null; menuTrail = []; root = ""; return go("", ""); }
+      const isBack = menuCur && action === menuCur.menu.back && action !== "exit";
+      const at = menuTrail.findIndex(x => x.id === r.menu.id);
+      if (isBack && at < 0 && menuTrail.length > 1) { menuTrail.pop(); menuTrail[menuTrail.length - 1].id = r.menu.id; }
+      else if (at >= 0) menuTrail = menuTrail.slice(0, at + 1);
+      else if (r.menu.id === "cal:1" || (!menuCur && !menuTrail.length)) menuTrail = [{id: r.menu.id, title: r.menu.title, entry: r.menu.title}];
+      else if (!menuCur) menuTrail.push({id: r.menu.id, title: r.menu.title, entry: r.menu.title});
+      else if (r.menu.id !== menuCur.menu.id) menuTrail.push({id: r.menu.id, title: r.menu.title, entry: pendingEntry || r.menu.title});
+      pendingEntry = null;
+      menuCur = r; renderMenu(); syncHash();
+    } catch (e) {
+      if (/leyendo la configuración/i.test(e.message)) {
+        // the daily backup is walking the device menu; wait for it instead of failing
+        $("#view").innerHTML = `<div class="empty waiting"><span class="spin"></span><b>Un momento</b><span class="muted">El servidor está haciendo la copia diaria y está usando el menú del equipo. Se abre solo en cuanto termine (menos de un minuto).</span></div>`;
+        const again = () => { if (!location.hash.startsWith("#/menu")) return; go(id, action); };
+        timers.push(setTimeout(again, 4000));
+        return;
+      }
+      toast("No se aplicó · " + shortErr(e.message), 6000);
+      if (!menuCur) $("#view").innerHTML = `<div class="banner">${esc(shortErr(e.message))}</div>`;
+    }
+  };
+  const refreshDetail = async () => {
+    if (!menuCur || document.querySelector("dialog[open]") || menuCur.menu.type === "timer") return;
+    try { menuCur.detail = await api(`/api/menu/detail?id=${encodeURIComponent(menuCur.menu.id)}&type=${encodeURIComponent(menuCur.menu.type)}`); renderMenu(); } catch (e) {}
+  };
+  const renderMenu = () => {
+    const {menu: m, detail: d} = menuCur;
+    const nav = `<div class="menu-nav">
+      ${m.back && !(m.back === "exit" && menuTrail.length <= 1) && menuTrail.length <= 1 ? `<button class="btn" data-a="${esc(m.back)}">${m.back === "exit" ? "Cerrar menú" : icon("back", "mini") + " Atrás"}</button>` : ""}
+      ${m.back_hold ? `<button class="btn" data-a="${esc(m.back_hold)}" title="Pulsación larga en Atrás">Atrás largo</button>` : ""}
+      ${m.hold_action && m.type !== "information" ? `<button class="btn" data-a="${esc(m.hold_action)}" title="Pulsación larga">Más opciones</button>` : ""}
+      ${m.forward_hold ? `<button class="btn" data-a="${esc(m.forward_hold)}" title="Pulsación larga en Siguiente">Siguiente largo</button>` : ""}
+      ${m.forward ? `<button class="btn" data-a="${esc(m.forward)}">Página siguiente ${icon("chevron", "mini")}</button>` : ""}
+    </div>`;
+    const crumbs = menuTrail.length > 1 ? `<nav class="crumbs" aria-label="Ruta">${icon("back", "mini crumb-back")}${menuTrail.slice(0, -1).map((c, j) => `<button class="crumb ${j < menuTrail.length - 2 ? "crumb-far" : ""}" data-crumb="${j}">${esc(prettyTitle(c.entry))}</button>`).join(`<span class="crumb-sep">${icon("chevron", "mini")}</span>`)}</nav>` : "";
+    let body = "";
+    const t = m.type;
+    if (t === "string list") {
+      const base = entryPath();
+      const zr = zoneRooms();
+      body = `<div class="list menu-list">${(d.menu || []).map(i => {
+        const raw = unent(i.title);
+        let val = menuValues ? menuValues[[...base, raw].join(" › ")] : undefined;
+        if (raw === "Habitación" && /^Zona [A-Z]$/.test(base[base.length - 1] || "")) { const zz = zoneRooms()[base[base.length - 1].slice(-1)]; val = zz ? roomTitle(zz) : "Ninguna"; }
+        const zone = /^Zona ([A-Z])$/.exec(raw), zroom = zone && zr[zone[1]] ? roomTitle(zr[zone[1]]) : (zone ? "sin habitación" : "");
+        const help = MENU_HELP[raw];
+        const zoneRoom = /^Zona ([A-Z])$/.exec(raw) && zoneRooms()[raw.slice(-1)];
+        const mi = MENU_ICON[raw] || (/^Zona [A-Z]$/.test(raw) ? "zone" : "sliders");
+        return `<button class="${MENU_DANGER.test(raw) ? "danger-row" : ""}" data-a="${esc(i.action)}" data-entry="${esc(raw)}" ${i.action ? "" : "disabled"}>${zoneRoom ? ricon(zoneRoom, "sm") : mi ? `<span class="mic">${icon(mi)}</span>` : ""}<span class="ml"><span>${esc(prettyTitle(raw))}${zroom ? ` <span class="muted">· ${esc(zroom)}</span>` : ""}</span>${help ? `<small>${esc(help)}</small>` : ""}</span>
+        <span class="row">${val !== undefined && val !== "" ? `<span class="mval">${esc(/^[01]$/.test(val) ? (val === "1" ? "Sí" : "No") : onOff(es(val)))}</span>` : ""}${i.hold_action ? `<span class="btn small" data-a="${esc(i.hold_action)}">⋯</span>` : ""}${icon("chevron", "chev")}</span></button>`; }).join("")}</div>`;
+    } else if (t === "dynamic list" || t === "dynamic list tiled") {
+      body = `${d.hint ? `<p class="muted">${esc(d.hint)}</p>` : ""}<div class="tiles">${(d.menu || []).map(i => `
+        <div class="tile ${i.highlighted ? "hl" : ""} ${i.action ? "" : "disabled"}" data-a="${esc(i.action)}">
+          <img src="/icons/${esc(i.icon || "option_empty")}.svg" alt="" onerror="this.style.visibility='hidden'">
+          <b>${esc(i.icon_text)}</b><span class="small">${esc(i.title || tileRoomName(i.icon))}</span>
+          ${i.hold_action ? `<button class="btn small" data-a="${esc(i.hold_action)}">⋯</button>` : ""}</div>`).join("")}</div>`;
+    } else if (t === "options") {
+      body = `<p class="muted" style="text-align:center">${esc(MENU_HELP[unent(m.title)] || es(d.hint))}</p>
+        <div class="row" style="justify-content:center;gap:24px"><button class="round" data-a="${esc(d.decrease)}" ${d.decrease ? "" : "disabled"}>−</button>
+        <div class="big-value">${esc(es(d.value))}</div><button class="round" data-a="${esc(d.increase)}" ${d.increase ? "" : "disabled"}>+</button></div>`;
+    } else if (t === "offset") {
+      body = `${d.hint ? `<p class="muted">${esc(d.hint)}</p>` : ""}<table>${(d.menu || []).map(i => `<tr>
+        <td><img src="/icons/${esc(i.icon || "option_empty")}.svg" alt="" style="width:28px;height:28px" onerror="this.style.visibility='hidden'"></td>
+        <td>${esc(i.icon_text)}</td><td class="num">${esc(i.value)}</td>
+        <td class="num"><button class="round" style="width:32px;height:32px;font-size:18px" data-a="${esc(i.decrease)}" ${i.decrease ? "" : "disabled"}>−</button>
+        <b style="display:inline-block;min-width:60px;text-align:center">${esc(i.offset)}</b>
+        <button class="round" style="width:32px;height:32px;font-size:18px" data-a="${esc(i.increase)}" ${i.increase ? "" : "disabled"}>+</button></td></tr>`).join("")}</table>`;
+    } else if (t === "information") {
+      body = `<div class="info-rows">${(d.menu || []).map(l => {
+        const raw = unent(l.text).trim(), kv0 = /^(.+?): (.+)$/.exec(raw);
+        const kv = kv0 && (([lab, val]) => [raw, lab, onOff(es(val))])(infoLabel(kv0[1], kv0[2]));
+        const text = fmtClockSec(fmtIsoDate(INFO_HEAD[raw.replace(/:$/, "")] ? INFO_HEAD[raw.replace(/:$/, "")] + (raw.endsWith(":") ? ":" : "") : onOff(es(raw))));
+        const attrs = l.action ? `data-a="${esc(l.action)}" class="ir link"` : `class="ir"`;
+        if (!text.trim()) return `<div class="ir-gap"></div>`;
+        if (kv && /^(Exterior|Bomba)/.test(kv[1])) return `<div class="ir-head">General</div><div ${attrs}><span>${esc(kv[1])}</span><b>${esc(kv[2])}</b></div>`;
+        if (kv) return `<div ${attrs}><span>${esc(kv[1])}</span><b>${esc(kv[2])}</b></div>`;
+        if (/[a-záéíóúñ]/i.test(text) && (text.trim().endsWith(":") || !/\d/.test(text) || INFO_HEAD[raw])) return `<div class="ir-head">${esc(text.replace(/:$/, ""))}</div>`;
+        return `<div ${attrs}><span>${esc(text)}</span></div>`; }).join("")}</div>`;
+    } else if (t === "binary query") {
+      body = `<div class="lines">${(d.hint || []).map(l => `<p class="center">${esc(l.line)}</p>`).join("")}</div>
+        <div class="row" style="justify-content:center;gap:12px;margin-top:16px">
+          <button class="btn ${d.value == d.yes ? "primary" : ""}" data-a="${esc(d.yes)}" style="min-width:90px">Sí</button>
+          <button class="btn ${d.value == d.no ? "primary" : ""}" data-a="${esc(d.no)}" style="min-width:90px">No</button></div>`;
+    } else if (t === "system date" || t === "month day") {
+      const p = n => String(n).padStart(2, "0");
+      const year = t === "month day" ? new Date().getFullYear() : d.year;
+      const has = d.day > 0 && d.month > 0;
+      body = `${d.hint ? `<p class="muted">${esc(d.hint)}</p>` : ""}<div class="row"><input type="date" id="mDate" value="${has ? `${year}-${p(d.month)}-${p(d.day)}` : ""}">
+        <button class="btn primary" id="mSet">Guardar</button>${t === "month day" ? `<button class="btn" id="mClear">Desactivar</button>` : ""}</div>`;
+    } else if (t === "system time") {
+      const p = n => String(n).padStart(2, "0");
+      body = `<div class="row"><input type="time" id="mTime" value="${p(d.hour)}:${p(d.minute)}"><button class="btn primary" id="mSet">Guardar</button>
+        <button class="btn" id="mNow">Hora actual</button></div>`;
+    } else if (t === "system datetime") {
+      const p = n => String(n).padStart(2, "0");
+      body = `<div class="row"><input type="datetime-local" id="mDT" value="${d.year}-${p(d.month)}-${p(d.day)}T${p(d.hour)}:${p(d.minute)}">
+        <button class="btn primary" id="mSet">Guardar</button><button class="btn" id="mNow">Ahora</button></div>`;
+    } else if (t === "text") {
+      body = `<div class="row"><input id="mText" value="${esc(d.value)}" style="flex:1"><button class="btn primary" id="mSet">Guardar</button></div>`;
+    } else if (t === "timer") {
+      body = serviceTimer(d);
+    } else if (t === "time ranges" || t === "time ranges 2") {
+      const hm = v => `${String(Math.floor(v / 60)).padStart(2, "0")}:${String(v % 60).padStart(2, "0")}`;
+      const modes = Object.fromEntries((d.modes || []).map(x => [x.mode_id, x.mode_text]));
+      body = `<p class="muted small">${DAYS[d.day] || ""} · solo lectura</p><table><tr><th>Inicio</th><th>${t === "time ranges" ? "Fin" : "Modo"}</th><th></th></tr>
+        ${(d.ranges || []).map(x => `<tr><td class="num">${hm(x.start)}</td><td class="num">${t === "time ranges" ? hm(x.stop) : esc(modes[x.mode] ?? x.mode)}</td><td>${esc(x.title)} <span class="muted">${esc(x.hint)}</span></td></tr>`).join("")}</table>`;
+    } else {
+      body = `<pre class="small">${esc(JSON.stringify(d, null, 1))}</pre>`;
+    }
+    $("#view").innerHTML = banner() + `
+      ${crumbs}
+      <div class="page-head"><h3 title="${esc(m.id)}">${esc(prettyTitle(menuTrail[menuTrail.length - 1]?.entry || m.title))}</h3></div>
+      ${MENU_HELP[unent(m.title)] && !["string list", "options"].includes(t) ? `<p class="muted" style="margin:-8px 2px 14px">${esc(MENU_HELP[unent(m.title)])}</p>` : ""}
+      <div class="card menu-card">${body}</div>
+      ${nav}
+      <p class="muted small menu-foot">El mismo menú que la pantalla del termostato. Lo que cambies aquí se aplica al momento.</p>`;
+    $("#view").onclick = async ev => {
+      const cr = ev.target.closest("[data-crumb]");
+      if (cr) {
+        const j = Number(cr.dataset.crumb);
+        if (j === 0) return go(m.id, "exit");
+        try {
+          const r = await api("/api/menu/open", {body: {path: entryPath().slice(0, j)}});
+          menuTrail = menuTrail.slice(0, j + 1); menuTrail[j].id = r.menu.id; menuCur = r; renderMenu(); syncHash();
+        } catch (e) { toast(e.message, 5000); }
+        return;
+      }
+      const el = ev.target.closest("[data-a]");
+      if (!el || el.disabled || el.classList.contains("disabled") || !el.dataset.a) return;
+      pendingEntry = el.dataset.entry || null;
+      ev.stopPropagation(); go(m.id, el.dataset.a);
+    };
+    const set = async body => {
+      try { menuCur.detail = await api("/api/menu/set", {body: {id: m.id, type: t, ...body}}); toast("Guardado"); renderMenu(); rereadSoon(); }
+      catch (e) { toast("Error: " + e.message, 6000); }
+    };
+    const bind = (sel, fn) => { const el = $(sel); if (el) el.onclick = fn; };
+    bind("#mSet", () => {
+      if ($("#mDate")) { const [y, mo, da] = $("#mDate").value.split("-").map(Number); if (!da) return; set({day: da, month: mo, year: y}); }
+      else if ($("#mTime")) { const [h, mi] = $("#mTime").value.split(":").map(Number); set({hour: h, minute: mi}); }
+      else if ($("#mDT")) { const v = new Date($("#mDT").value); set({day: v.getDate(), month: v.getMonth() + 1, year: v.getFullYear(), hour: v.getHours(), minute: v.getMinutes()}); }
+      else if ($("#mText")) set({value: $("#mText").value});
+    });
+    bind("#mClear", () => set({day: 0, month: 0, year: new Date().getFullYear()}));
+    bind("#mNow", () => { const v = new Date(); set({day: v.getDate(), month: v.getMonth() + 1, year: v.getFullYear(), hour: v.getHours(), minute: v.getMinutes()}); });
+    if (t === "timer") bindServiceTimer(m, set);
+  };
+  if (root && root.startsWith("p/")) {
+    const path = root.slice(2).split("/").map(decodeURIComponent);
+    try {
+      const r = await api("/api/menu/open", {body: {path}});
+      menuTrail = [{id: "cal:1", title: "Experto", entry: "Experto"}, ...path.map((e, k) => ({id: k === path.length - 1 ? r.menu.id : "?" + k, title: e, entry: e}))];
+      menuCur = r; renderMenu();
+    } catch (e) {
+      await new Promise(res => setTimeout(res, 900));
+      try { const r = await api("/api/menu/open", {body: {path}}); menuTrail = [{id: "cal:1", title: "Experto", entry: "Experto"}, ...path.map((e, k) => ({id: k === path.length - 1 ? r.menu.id : "?" + k, title: e, entry: e}))]; menuCur = r; renderMenu(); }
+      catch (e2) { await go("", ""); }
+    }
+  } else await go("", root === "status" ? "status" : "");
+  every(refreshDetail, 10000);
+}
+
+// tiles of room pickers only carry the room icon; show the room it stands for
+function tileRoomName(icon) {
+  if (!ROOM_TYPES[icon] && !/^room\d+$/.test(icon || "")) return "";
+  return S.rooms.find(r => r.type === icon)?.name || typeLabel(icon);
+}
+
+// on/off service timer screens (timer.json), 48 half-hour slots per day
+let stDay = (new Date().getDay() + 6) % 7, stDays = null;
+function serviceTimer(d) {
+  stDays = Array.from({length: 7}, (_, day) => Array.from({length: 48}, (_, s) => {
+    const w = (d.timer || [])[day * 3 + Math.floor(s / 16)]?.value || 0;
+    return (w >>> ((s % 16) * 2)) & 3 ? "on" : "off";
+  }));
+  const hours = Array.from({length: 12}, (_, i) => `<div class="h">${String(i * 2).padStart(2, "0")}</div>`).join("");
+  return `<p class="muted small">Pulsa las franjas para alternar encendido/apagado y guarda el día.</p>
+    <div class="week" id="sWeek"><div></div>${hours}${stDays.map((slots, day) => `<div class="d" data-day="${day}" style="${day === stDay ? "text-decoration:underline" : ""}">${DAYS[day].slice(0, 3)}</div>` +
+      slots.map((m, i) => `<div class="s slot-${m}" data-d="${day}" data-i="${i}"></div>`).join("")).join("")}</div>
+    <div class="actions" style="margin-top:12px"><button class="btn primary" id="sSave">Guardar ${DAYS[stDay].toLowerCase()}</button>
+      <button class="btn" data-scopy="31">Copiar a lunes-viernes</button><button class="btn" data-scopy="127">Copiar a lunes-domingo</button></div>`;
+}
+function bindServiceTimer(m, set) {
+  $("#sWeek").onclick = ev => {
+    const el = ev.target.closest("[data-i]"), dl = ev.target.closest("[data-day]");
+    if (dl) { stDay = Number(dl.dataset.day); document.querySelectorAll("#sWeek .d").forEach(x => x.style.textDecoration = x === dl ? "underline" : ""); $("#sSave").textContent = "Guardar " + DAYS[stDay].toLowerCase(); return; }
+    if (!el) return;
+    const d = Number(el.dataset.d), i = Number(el.dataset.i);
+    stDays[d][i] = stDays[d][i] === "on" ? "off" : "on"; el.className = `s slot-${stDays[d][i]}`; stDay = d;
+    $("#sSave").textContent = "Guardar " + DAYS[stDay].toLowerCase();
+  };
+  $("#sSave").onclick = () => set({day: stDay, slots: stDays[stDay]});
+  document.querySelectorAll("[data-scopy]").forEach(b => b.onclick = async () => {
+    if (!confirm(`¿Copiar el ${DAYS[stDay].toLowerCase()} a los días elegidos?`)) return;
+    try { await api("/api/menu/set", {body: {id: m.id, type: "timer copy", day: stDay, mask: Number(b.dataset.scopy)}}); toast("Copiado"); rereadSoon(); } catch (e) { toast(e.message, 6000); }
+  });
+}
+
+// ---------- status
+
+function viewStatus() {
+  const render = () => {
+    const st = S.status || [];
+    const find = (group, label) => st.find(m => m.group.startsWith(group) && m.label === label);
+    const onoff = m => m && m.value === 1;
+    const zr = zoneRooms();
+    // per room: its sensor and the zones (relays) that heat it
+    const rooms = S.rooms.filter(r => r.type !== "outdoor").map(r => {
+      const zones = Object.entries(zr).filter(([, x]) => x.id === r.id).map(([z]) => ({z, m: st.find(m => m.group === "Salidas" && m.label.endsWith(`Zona ${z}`))}));
+      return {r, zones};
+    });
+    const pump = find("Bomba circuito", "Modo"), flowSet = find("Bomba circuito", "Ida nominal"), flow = find("Bomba circuito", "Ida");
+    const demand = st.find(m => m.group === "Salidas" && /Demanda/.test(m.label));
+    const pumpOut = st.find(m => m.group === "Salidas" && /Bomba circuito/.test(m.label));
+    const probes = st.filter(m => m.group === "Entradas" && /^\d+\.\d+$/.test(m.label));
+    const outdoor = st.find(m => m.label === "Exterior");
+    const freeZones = st.filter(m => m.group === "Salidas" && /Zona [A-Z]$/.test(m.label) && !zr[m.label.slice(-1)]);
+    const anyHeat = rooms.some(x => x.zones.some(z => onoff(z.m)));
+    $("#view").innerHTML = banner() + `
+      <div class="page-head"><h3>Instalación</h3></div>
+      <p class="lead">${anyHeat ? `Ahora mismo calienta${rooms.filter(x => x.zones.some(z => onoff(z.m))).length > 1 ? "n" : ""} ${rooms.filter(x => x.zones.some(z => onoff(z.m))).map(x => esc(roomTitle(x.r))).join(" y ")}.` : "Ninguna zona está calentando ahora mismo."}
+        ${onoff(demand) ? " La centralita está pidiendo calor a la caldera." : " No se está pidiendo calor a la caldera."}</p>
+      <div class="flow">
+        <section class="node">
+          <div class="node-h">Habitaciones</div>
+          ${rooms.map(({r, zones}) => `<a class="node-row" href="#/room/${r.id}">${ricon(r)}<span class="nr-name"><b>${esc(roomTitle(r))}</b><span class="muted small">${esc(stateLine(r).text)}</span></span><span class="nr-temp">${fmtC(num(r.temperature))}°</span></a>`).join("")}
+        </section>
+        <div class="pipe ${anyHeat ? "on" : ""}" aria-hidden="true"></div>
+        <section class="node">
+          <div class="node-h">Circuitos de cada habitación</div>
+          ${rooms.map(({r, zones}) => { const on = zones.some(z => onoff(z.m));
+            return `<div class="zrow ${on ? "on" : ""}"><span class="zled"></span><span class="zr-name"><b>${esc(roomTitle(r))}</b><span class="muted small">${zones.length ? `zona${zones.length > 1 ? "s" : ""} ${zones.map(z => z.z).join(zones.length > 1 ? " y " : "")}` : "sin zona asignada"}</span></span><span class="zr-state">${on ? "Pasa agua caliente" : "Sin paso de agua"}</span></div>`; }).join("")}
+          <p class="muted small node-note">Cada zona es una válvula de la centralita que deja pasar el agua caliente al suelo o radiador de una habitación. La salida A mueve la bomba${freeZones.length ? `; ${freeZones.length > 1 ? "las zonas" : "la zona"} ${freeZones.map(m => m.label.slice(-1)).join(" y ")} no ${freeZones.length > 1 ? "tienen" : "tiene"} habitación` : ""}.</p>
+        </section>
+        <div class="pipe ${onoff(pumpOut) ? "on" : ""}" aria-hidden="true"></div>
+        <section class="node node-sm">
+          <div class="node-h">Bomba del circuito</div>
+          <div class="node-state ${onoff(pumpOut) ? "on" : ""}">${onoff(pumpOut) ? "En marcha" : "Parada"}</div>
+          ${flow && flow.value !== null ? `<div class="muted small">Impulsión ${esc(es(flow.text))}</div>` : ""}
+        </section>
+        <div class="pipe ${onoff(demand) ? "on" : ""}" aria-hidden="true"></div>
+        <section class="node node-sm">
+          <div class="node-h">Caldera</div>
+          <div class="node-state ${onoff(demand) ? "on" : ""}">${onoff(demand) ? "Pidiendo calor" : "Sin demanda"}</div>
+          ${outdoor && outdoor.value !== null ? `<div class="muted small">Exterior ${esc(es(outdoor.text))}</div>` : ""}
+        </section>
+      </div>
+      <details class="card section adv"><summary>Detalles técnicos</summary>
+        <div style="margin-top:10px">
+        ${flowSet ? `<div class="kv"><span>Temperatura objetivo del agua</span><b>${esc(es(flowSet.text))}</b></div>` : ""}
+        ${probes.map(m => `<div class="kv"><span>${esc(sensorRoom(m.label) ? "Sensor de " + roomTitle(sensorRoom(m.label)) : "Sonda " + m.label)} <span class="muted">(${esc(m.label)})</span></span><b>${esc(es(m.text))}</b></div>`).join("")}
+        ${freeZones.length ? `<div class="kv"><span>Zonas sin habitación</span><b>${freeZones.map(m => esc(m.label.slice(-1))).join(", ")}</b></div>` : ""}
+        </div>
+      </details>
+      <details class="card section adv"><summary>Pantalla original del equipo</summary>
+        <div class="lines small">${(S.status_lines || []).flat().map(l => `<p>${esc(es(l)) || "&nbsp;"}</p>`).join("")}</div>
+        <a class="link-more" href="#/menu/status">Abrir en el menú Experto ${icon("chevron", "mini")}</a></details>`;
+  };
+  render();
+  onRefresh(render);
+}
+
+// ---------- friendly names for device registers
+
+function zoneRooms() {
+  const out = {};
+  for (const [z, t] of Object.entries(S.zones || {})) { const r = S.rooms.find(r => r.type === t); if (r) out[z] = r; }
+  return out;
+}
+/** {group, label, unit} or a history key like "Entradas · 116.1 [°C]" -> human name, or null to hide. */
+function metricName(m) {
+  if (typeof m === "string") {
+    const mm = /^(?:(.*) · )?(.*?)(?: \[(.*)\])?$/.exec(m);
+    m = {group: mm[1] || "", label: mm[2], unit: mm[3] || ""};
+  }
+  const {group, label, unit} = m;
+  if (/--$/.test(label)) return null;
+  if (label === "Exterior") return "Temperatura exterior";
+  if (group === "Entradas") {
+    const room = sensorRoom(label);
+    if (room) return `${unit.includes("%") ? "Humedad" : "Sensor"} de ${roomTitle(room)}`;
+    if (label === "1") return unit.includes("%") ? "Humedad del termostato" : "Termostato °CALEON";
+    if (/^\d+\.\d+$/.test(label)) return `Sonda ${label}`;
+    if (/^\d+\.N\d+$/.test(label)) return `Entrada PWM ${label}`;
+  }
+  if (group.startsWith("Bomba circuito")) return {"Ida nominal": "Impulsión objetivo", "Ida": "Impulsión", "Modo": "Bomba del circuito"}[label] || label;
+  if (group === "Salidas") {
+    const z = /Zona ([A-Z])$/.exec(label);
+    if (z) { const r = zoneRooms()[z[1]]; return r ? `${roomTitle(r)} · zona ${z[1]}` : null; }
+    if (/Bomba circuito/.test(label)) return "Bomba del circuito";
+    if (/Demanda de energía/.test(label)) return "Demanda a la caldera";
+  }
+  return label;
+}
+
+// ---------- charts
+
+function lineChart(svg, legendEl, series, hours, {yUnit = "", lanes = false, bands = []} = {}) {
+  const W = svg.clientWidth || 800, H = svg.clientHeight || 260;
+  const narrow = W < 520;
+  const P = {l: lanes ? (narrow ? 118 : 190) : 38, r: 12, t: 12, b: 24};
+  const visible = series.filter(s => !s.hidden);
+  const vals = visible.flatMap(s => s.points.map(p => p[1])).filter(v => v !== null && v !== undefined);
+  if (!series.length || (!vals.length && !lanes)) {
+    svg.innerHTML = ""; svg.style.height = "auto";
+    legendEl.innerHTML = `<div class="chart-empty">Aún no hay datos en este periodo. El servidor guarda una muestra cada minuto.</div>`; return;
+  }
+  const now = Date.now() / 1000;
+  const first = Math.min(...visible.flatMap(s => s.points.slice(0, 1).map(p => p[0])), now);
+  let t0 = now - hours * 3600;
+  const t1 = now;
+  if (first > t0 + (now - t0) * 0.2) t0 = Math.max(t0, first - Math.max(900, (now - first) * 0.08), now - Math.max(3 * 3600, (now - first) * 1.1));
+  const partial = first > now - hours * 3600 + 900;
+  let lo, hi;
+  if (lanes) { lo = 0; hi = visible.length || 1; }
+  else if (yUnit === "%") { lo = Math.floor(Math.min(...vals) - 0.5); hi = Math.ceil(Math.max(...vals) + 0.5); }
+  else { lo = Math.min(...vals); hi = Math.max(...vals); const pad = Math.max(0.4, (hi - lo) * 0.15); lo = Math.floor((lo - pad) * 2) / 2; hi = Math.ceil((hi + pad) * 2) / 2; }
+  const x = t => P.l + (t - t0) / Math.max(1, t1 - t0) * (W - P.l - P.r);
+  const y = v => P.t + (hi - v) / (hi - lo) * (H - P.t - P.b);
+  let g = "";
+  for (const [b0, b1] of bands) if (b1 > t0) g += `<rect class="hband" x="${x(Math.max(b0, t0))}" y="${P.t}" width="${Math.max(2, x(b1) - x(Math.max(b0, t0)))}" height="${H - P.t - P.b}"/>`;
+  if (!lanes) {
+    const span = hi - lo, stepY = span <= 3 ? 0.5 : span <= 7 ? 1 : span <= 15 ? 2 : span <= 40 ? 5 : 10;
+    for (let v = Math.ceil(lo / stepY) * stepY; v <= hi + 1e-9; v += stepY)
+      g += `<line class="gl" x1="${P.l}" x2="${W - P.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${P.l - 6}" y="${y(v) + 4}" text-anchor="end">${String(+v.toFixed(1)).replace(".", ",")}${yUnit}</text>`;
+  }
+  const span = t1 - t0, want = narrow ? 5 : 8;
+  const step = [1800, 3600, 7200, 10800, 21600, 43200, 86400, 172800, 604800].find(st => span / st <= want) || 604800;
+  const tz = -new Date().getTimezoneOffset() * 60;
+  for (let t = Math.ceil((t0 + tz) / step) * step - tz; t <= t1; t += step) {
+    const d = new Date(t * 1000), xx = x(t);
+    if (xx < P.l + 14 || xx > W - P.r - 14) continue;
+    const lab = step >= 86400 ? d.toLocaleDateString("es-ES", {day: "numeric", month: "short"}) : d.toLocaleTimeString("es-ES", {hour: "2-digit", minute: "2-digit"});
+    g += `<line class="gl" x1="${xx}" x2="${xx}" y1="${H - P.b}" y2="${H - P.b + 4}"/><text x="${xx}" y="${H - 6}" text-anchor="middle">${lab}</text>`;
+  }
+  const gap = Math.max(300, hours * 3600 / 600 * 2.5);
+  let lines = "", laneLabels = "";
+  if (lanes && !visible.some(s => s.points.some(p => p[1] >= 0.5 && p[0] >= t0))) {
+    svg.innerHTML = ""; svg.style.height = "0px"; svg.style.display = "none";
+    legendEl.innerHTML = `<div class="chart-empty">${icon("power", "mini")} Ninguna zona ha calentado en este periodo.</div>`; return;
+  }
+  svg.style.display = "";
+  const solid = visible.filter(s => !s.dashed);
+  visible.forEach((s, k) => {
+    const dy = lanes || s.dashed ? 0 : (solid.indexOf(s) - (solid.length - 1) / 2) * 1.6;
+    if (lanes) {
+      const lh = (H - P.t - P.b) / visible.length, top = P.t + k * lh, bh = Math.min(16, lh * 0.62);
+      let rects = "", start = null;
+      s.points.forEach(([ts, v], i) => {
+        const next = s.points[i + 1];
+        if (v >= 0.5 && start === null) start = ts;
+        if (start !== null && (v < 0.5 || !next || next[0] - ts > gap)) { const end = v < 0.5 ? ts : ts + 60; rects += `<rect x="${x(Math.max(start, t0))}" width="${Math.max(2, x(end) - x(Math.max(start, t0)))}" y="${top + (lh - bh) / 2}" height="${bh}" fill="${s.color}" rx="${bh / 2}"/>`; start = null; }
+      });
+      const maxCh = narrow ? 13 : 22, lab = s.name.length > maxCh ? s.name.slice(0, maxCh - 1) + "…" : s.name;
+      lines += `<rect class="lane" x="${P.l}" y="${top + (lh - bh) / 2}" width="${W - P.l - P.r}" height="${bh}" rx="${bh / 2}"/>${rects}`;
+      laneLabels += `<text class="lane-label" x="2" y="${top + lh / 2 + 4}"><title>${esc(s.name)}</title>${esc(lab)}</text>`;
+      return;
+    }
+    let d = "", last = null;
+    for (const [ts, v] of s.points) {
+      if (v === null || v === undefined || ts < t0) { last = null; continue; }
+      if (last !== null && ts - last <= gap) d += s.step ? `H${x(ts).toFixed(1)}V${(y(v) + dy).toFixed(1)}` : `L${x(ts).toFixed(1)},${(y(v) + dy).toFixed(1)}`;
+      else d += `M${x(ts).toFixed(1)},${(y(v) + dy).toFixed(1)}`;
+      last = ts;
+    }
+    const stroke = s.dashed ? `color-mix(in oklch, ${s.color} 55%, var(--card))` : s.color;
+    if (!s.dashed) lines += `<path d="${d}" fill="none" stroke="var(--card)" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    lines += `<path ${s.dashed ? "" : 'class="line" pathLength="1"'} d="${d}" fill="none" stroke="${stroke}" stroke-width="${s.dashed ? 1.6 : 2.2}" ${s.dashed ? 'stroke-dasharray="5 4"' : ""} stroke-linejoin="round" stroke-linecap="round"/>`;
+  });
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const cid = "clip" + Math.random().toString(36).slice(2, 8);
+  const tags = "";
+  svg.innerHTML = `<defs><clipPath id="${cid}"><rect x="${P.l}" y="${P.t - 2}" width="${W - P.l - P.r}" height="${H - P.t - P.b + 4}"/></clipPath></defs>` + g +
+    `<g clip-path="url(#${cid})">${lines}</g>` + laneLabels + tags + `<g class="scrub" style="display:none"><line y1="${P.t}" y2="${H - P.b}"/><g class="dots"></g></g>`;
+  const fmtV = v => v === null || v === undefined ? "—" : v.toFixed(1).replace(".", ",") + (yUnit === "°" ? " °C" : yUnit === "%" ? " %" : "");
+  // scrubber: a readout line above the plot, never covering the lines
+  if (!lanes) {
+    const wrap = svg.parentElement;
+    let tip = wrap.querySelector(".readout");
+    if (!tip) { tip = document.createElement("div"); tip.className = "readout"; wrap.insertBefore(tip, svg); }
+    const first = !document.querySelector("#view .readout") || wrap.querySelector(".readout") === document.querySelector("#view .readout");
+    const idle = first ? `<span class="muted">${matchMedia("(any-pointer: coarse)").matches ? "Toca el gráfico" : "Pasa el ratón por el gráfico"} para ver los valores</span>` : "";
+    tip.innerHTML = idle;
+    const move = ev => {
+      const rect = svg.getBoundingClientRect(), px = (ev.clientX - rect.left) / rect.width * W;
+      if (px < P.l || px > W - P.r) return;
+      const t = t0 + (px - P.l) / (W - P.l - P.r) * (t1 - t0);
+      const rows = visible.filter(s => !s.twinOf).map(s => {
+        let best = null; for (const p of s.points) if (p[1] !== null && (best === null || Math.abs(p[0] - t) < Math.abs(best[0] - t))) best = p;
+        return best && Math.abs(best[0] - t) < gap ? {s, v: best[1]} : null;
+      }).filter(Boolean);
+      const sc = svg.querySelector(".scrub"); sc.style.display = ""; sc.firstElementChild.setAttribute("x1", px); sc.firstElementChild.setAttribute("x2", px);
+      sc.querySelector(".dots").innerHTML = rows.filter(({v}) => v >= lo && v <= hi).map(({s, v}) => `<circle class="dotc" cx="${px}" cy="${y(v)}" r="4.5" fill="${s.dashed ? `color-mix(in oklch, ${s.color} 55%, var(--card))` : s.color}"/>`).join("");
+      tip.innerHTML = `<b>${new Date(t * 1000).toLocaleTimeString("es-ES", {hour: "2-digit", minute: "2-digit"})}</b>` + rows.map(({s, v}) => `<span><i style="background:${s.dashed ? `color-mix(in oklch, ${s.color} 55%, var(--card))` : s.color}"></i>${esc(s.name)} <b>${fmtV(v)}</b></span>`).join("");
+    };
+    svg.onpointermove = move; svg.onpointerdown = move;
+    svg.onpointerleave = () => { svg.querySelector(".scrub").style.display = "none"; tip.innerHTML = idle; };
+  }
+  const sinceTxt = new Date(first * 1000).toLocaleTimeString("es-ES", {hour: "2-digit", minute: "2-digit"});
+  const note = (partial ? `<span class="chart-note">Solo hay datos desde las ${sinceTxt}${first < now - 86400 ? " del " + new Date(first * 1000).toLocaleDateString("es-ES", {day: "numeric", month: "short"}) : ""}</span>` : "")
+    ;
+  const shown = series.filter(s => !s.noLegend);
+  legendEl.innerHTML = (shown.length === 1 ? ""
+    : shown.map(s => `<button class="lg ${s.hidden ? "off" : ""}" data-i="${series.indexOf(s)}" aria-pressed="${!s.hidden}"><i style="background:${s.color}"></i>${esc(s.name)}</button>`).join("")) + note;
+  legendEl.onchange = null;
+  legendEl.onclick = ev => { const b = ev.target.closest(".lg"); if (!b) return; const s = series[Number(b.dataset.i)]; s.hidden = !s.hidden; (s.twins || []).forEach(t => t.hidden = s.hidden); lineChart(svg, legendEl, series, hours, {yUnit, lanes, bands}); };
+}
+
+/** Time ranges in which any of `keys` was on, from /api/metrics. */
+function onIntervals(metrics, keys) {
+  const pts = keys.flatMap(k => (metrics[k] || []).map(p => [p[0], p[1] >= 0.5])).sort((a, b) => a[0] - b[0]);
+  const out = []; let start = null;
+  for (const [ts, on] of pts) { if (on && start === null) start = ts; if (!on && start !== null) { out.push([start, ts]); start = null; } }
+  if (start !== null) out.push([start, Date.now() / 1000]);
+  return out;
+}
+
+// 5-sample median: hides 0,1° sensor flicker without moving real changes
+// median of 5, then a 0,15° dead band: the sensor's 0,1° flicker never draws as steps
+const deblip = (pts, band = 0.15) => {
+  const med = pts.map((p, i) => { if (p[1] === null) return p; const w = pts.slice(Math.max(0, i - 2), i + 3).map(q => q[1]).filter(v => v !== null).sort((a, b) => a - b); return [p[0], w[Math.floor(w.length / 2)]]; });
+  let last = null;
+  return med.map(p => { if (p[1] === null) { last = null; return p; } if (last === null || Math.abs(p[1] - last) >= band) last = p[1]; return [p[0], last]; });
+};
+async function drawRoomChart(svg, legend, hours, onlyRoom, what = "temp") {
+  let data; try { data = await api(`/api/history?hours=${hours}`); } catch (e) { return; }
+  const pal = palette(), series = [];
+  let bands = [];
+  Object.entries(data).forEach(([room, rows]) => {
+    if (onlyRoom !== null && room !== onlyRoom) return;
+    const r = S.rooms.find(r => String(r.id) === room), name = r ? roomTitle(r) : "Sala " + room, c = pal[Number(room) % pal.length];
+    if (what === "hum") { if (rows.some(x => x[2] !== null)) series.push({name, color: c, step: true, points: deblip(rows.map(x => [x[0], x[2]]), 0.6)}); return; }
+    const main = {name, color: c, step: true, points: deblip(rows.map(x => [x[0], x[1]]))};
+    series.push(main);
+    if (r && modeOf(r) !== "off") {
+      const tset = {name: onlyRoom === null ? name + " · objetivo" : "Objetivo", color: c, dashed: true, step: true, noLegend: onlyRoom === null, points: rows.map(x => [x[0], x[3]])};
+      if (onlyRoom === null) { main.twins = [tset]; tset.twinOf = main; }
+      series.push(tset);
+    }
+  });
+  if (onlyRoom !== null && what === "temp") {
+    const r = S.rooms.find(r => String(r.id) === onlyRoom);
+    const keys = (r?.outputs || []).map(o => `Salidas · ${o.label}`);
+    if (keys.length) { try { bands = onIntervals(await api(`/api/metrics?hours=${hours}`), keys); } catch (e) {} }
+  }
+  lineChart(svg, legend, series, hours, {yUnit: what === "hum" ? "%" : "°", bands});
+}
+
+const historySpan = () => S && S.history_since ? Date.now() / 1000 - S.history_since : 0;
+function rangeSeg(id, ranges, current) {
+  const span = historySpan();
+  const ok = (h, i) => i === 0 || span >= h * 3600 * 0.3;
+  const labels = {6: "6 h", 24: "24 h", 168: "7 días", 720: "30 días"};
+  return `<div class="seg" id="${id}" title="${ranges.some((h, i) => !ok(h, i)) ? "Los rangos largos se activan cuando haya más historial guardado" : ""}">${ranges.map((h, i) => `<button data-h="${h}" class="${h === current ? "active" : ""}" ${ok(h, i) ? "" : `disabled title="Aún no hay ${labels[h]} de datos"`}>${labels[h]}</button>`).join("")}</div>`;
+}
+const bestRange = (ranges, want) => { const span = historySpan(); return [...ranges].reverse().find((h, i) => h <= want && (h === ranges[0] || span >= h * 3600 * 0.3)) || ranges[0]; };
+const PROBES = ["oklch(0.6 0.16 345)", "oklch(0.58 0.1 120)", "oklch(0.55 0.05 260)", "oklch(0.6 0.09 60)", "oklch(0.6 0.08 200)", "oklch(0.55 0.12 290)"];
+
+function viewCharts() {
+  let hours = bestRange([6, 24, 168, 720], 24);
+  const outCount = () => (S.status || []).filter(m => m.group === "Salidas" && metricName(m)).length;
+  $("#view").innerHTML = `
+    <div class="page-head"><h3>Gráficas</h3>
+      ${rangeSeg("cRange", [6, 24, 168, 720], hours)}</div>
+    <div class="card chart-card"><div class="chart-head"><b>Temperatura</b>${S.rooms.some(r => modeOf(r) !== "off") ? `<span class="muted small">Discontinua: objetivo</span>` : ""}</div><div class="chart-wrap"><svg class="chart" id="c1"></svg></div><div class="legend" id="l1"></div></div>
+    <div class="card chart-card"><div class="chart-head"><b>Humedad${(() => { const h = S.rooms.filter(r => r.humidity && r.humidity !== "--"); return h.length === 1 ? " · " + esc(roomTitle(h[0])) : ""; })()}</b></div><div class="chart-wrap"><svg class="chart" id="c2" style="height:180px"></svg></div><div class="legend" id="l2"></div></div>
+    <div class="card chart-card"><div class="chart-head"><b>Cuándo ha calentado cada habitación</b><span class="muted small">Según las válvulas de cada zona</span></div><div class="chart-wrap"><svg class="chart" id="c4" style="height:${Math.max(120, 34 * outCount() + 36)}px"></svg></div><div class="legend" id="l4"></div></div>
+    <div class="card chart-card"><div class="chart-head"><b>Otros valores del equipo</b></div><div class="chart-wrap"><svg class="chart" id="c3"></svg></div><div class="legend" id="l3"></div></div>`;
+  const draw = async () => {
+    drawRoomChart($("#c1"), $("#l1"), hours, null);
+    drawRoomChart($("#c2"), $("#l2"), hours, null, "hum");
+    let m; try { m = await api(`/api/metrics?hours=${hours}`); } catch (e) { return; }
+    const pal = palette(), keys = Object.keys(m);
+    const analog = keys.filter(k => !k.startsWith("Salidas") && !/· Modo$/.test(k) && metricName(k) && !/^(Sensor|Humedad) de /.test(metricName(k)) && (m[k] || []).some(p => p[1] !== null));
+    const outputs = keys.filter(k => k.startsWith("Salidas") && metricName(k)).sort((a, b) => metricName(a).localeCompare(metricName(b), "es"));
+    lineChart($("#c4"), $("#l4"), outputs.map((k, i) => ({name: metricName(k), color: /Bomba|caldera/.test(metricName(k)) ? "var(--cool)" : "var(--accent)", points: m[k], noLegend: true})), hours, {lanes: true});
+    const c4 = $("#c4"); if (c4 && c4.style.display === "none") c4.closest(".chart-card").classList.add("collapsed");
+    const varies = k => { const v = (m[k] || []).map(p => p[1]).filter(x => x !== null); return v.length > 1 && Math.max(...v) - Math.min(...v) > 0.05; };
+    const shownAnalog = analog.filter(varies);
+    $("#c3").closest(".chart-card").hidden = !shownAnalog.length;
+    analog.length = 0; analog.push(...shownAnalog);
+    lineChart($("#c3"), $("#l3"), analog.map((k, i) => ({name: metricName(k), color: PROBES[i % PROBES.length], points: m[k], hidden: false})), hours, {yUnit: "°"});
+  };
+  $("#cRange").onclick = ev => { const b = ev.target.closest("button"); if (!b || b.disabled) return; hours = Number(b.dataset.h); [...$("#cRange").children].forEach(x => x.classList.toggle("active", x === b)); draw(); };
+  draw();
+  every(draw, 60000);
+}
+
+// ---------- backups
+
+const dayLabel = ts => {
+  const d = new Date(ts * 1000), today = new Date(); today.setHours(0, 0, 0, 0);
+  const diff = Math.round((new Date(d).setHours(0, 0, 0, 0) - today) / 864e5);
+  return diff === 0 ? "Hoy" : diff === -1 ? "Ayer" : d.toLocaleDateString("es-ES", {weekday: "long", day: "numeric", month: "long"});
+};
+const clock = ts => new Date(ts * 1000).toLocaleTimeString("es-ES", {hour: "2-digit", minute: "2-digit"});
+
+function viewBackups() {
+  let list = null, open = null, busy = null, result = {};
+  const render = () => {
+    const last = list && list[0];
+    $("#view").innerHTML = banner() + `
+      <a class="back" href="#/settings">${icon("back", "mini")} Ajustes</a>
+      <div class="page-head"><h3>Copias de seguridad</h3>
+        <button class="btn primary" id="bNew" ${busy || S.crawling ? "disabled" : ""}>${busy === "new" ? '<span class="spin"></span> Copiando…' : "Hacer copia ahora"}</button></div>
+      <p class="lead">${!list ? "Cargando…" : (last ? `Última copia: ${dayLabel(last.created).toLowerCase()} a las ${clock(last.created)}. ` : "Todavía no hay copias. Hacer una tarda alrededor de un minuto. ") + (S.backup_hours ? `Cada ${S.backup_hours === 24 ? "día" : S.backup_hours + " horas"} el servidor revisa la configuración y guarda una copia solo si algo ha cambiado.` : "Las copias automáticas están desactivadas en este servidor.")}</p>
+      <div class="bk-list stagger">${(list || []).map((b, k) => `<div class="bk ${open === b.name ? "open" : ""}" style="--k:${k}">
+        <button class="bk-row" data-open="${esc(b.name)}" aria-expanded="${open === b.name}">
+          <span class="bk-ic">${icon("archive")}</span>
+          <span class="bk-main"><b>${esc(dayLabel(b.created))}, ${clock(b.created)}</b><span class="muted small">${b.reason === "manual" ? "Manual" : "Automática"} · ${Math.round(b.size / 1024)} KB</span></span>
+          ${icon("chevron", "chev")}</button>
+        ${open === b.name ? `<div class="bk-actions">
+          <a class="btn" href="/api/backups/${encodeURIComponent(b.name)}">Descargar</a>
+          <button class="btn" data-cmp="${esc(b.name)}" ${busy ? "disabled" : ""}>Comparar</button>
+          <button class="btn" data-rst="${esc(b.name)}" ${busy ? "disabled" : ""}>Restaurar…</button>
+          </div>
+          <div class="bk-danger"><button class="btn ghost warn" data-del="${esc(b.name)}" ${busy ? "disabled" : ""}>Borrar esta copia</button></div>
+          ${busy === b.name ? `<div class="bk-progress"><span id="bkStep">Leyendo la configuración del equipo para compararla…</span><div class="bar determinate"><i id="bkBar"></i></div></div>` : ""}
+          ${result[b.name] || ""}` : ""}
+      </div>`).join("")}</div>
+      <div class="bk-upload"><label class="btn">Comparar un archivo de copia…<input type="file" id="bUpload" accept=".json,application/json" hidden></label>${result.upload || ""}</div>
+      <p class="muted small" style="margin-top:18px">Restaurar devuelve los nombres de las habitaciones y sus horarios. Los ajustes del menú Experto solo se comparan: el equipo no deja escribirlos de golpe, se cambian uno a uno desde Experto.</p>`;
+    const $$ = sel => document.querySelectorAll(sel);
+    $("#bNew").onclick = async () => {
+      busy = "new"; render();
+      try { const r = await api("/api/backups", {body: {}}); toast("Copia hecha"); open = r.name; } catch (e) { toast("No se pudo copiar: " + e.message, 6000); }
+      busy = null; load();
+    };
+    $$("[data-open]").forEach(b => b.onclick = () => { open = open === b.dataset.open ? null : b.dataset.open; render(); });
+    $$("[data-cmp]").forEach(b => b.onclick = () => compare(b.dataset.cmp, false));
+    $$("[data-rst]").forEach(b => b.onclick = () => compare(b.dataset.rst, true));
+    $$("[data-del]").forEach(b => b.onclick = async () => {
+      if (!await ask({title: "¿Borrar esta copia?", text: "No se puede deshacer.", input: false, ok: "Borrar"})) return;
+      try { await api(`/api/backups/${encodeURIComponent(b.dataset.del)}`, {method: "DELETE"}); open = null; load(); } catch (e) { toast(e.message); }
+    });
+    $("#bUpload").onchange = async ev => {
+      const f = ev.target.files[0]; if (!f) return;
+      try { const backup = JSON.parse(await f.text()); await compare("upload.json", false, backup); } catch (e) { toast("Ese archivo no es una copia válida", 6000); }
+    };
+  };
+  const diffHtml = (r, title) => {
+    const n = r.changes.length + r.menu_differences.length;
+    const ch = r.changes.map(c => `<li><b>${esc(c.what)}</b>${c.note ? `<span class="muted"> · ${esc(c.note)}</span>` : Array.isArray(c.to) ? `<div class="mini-tl">${miniTimer(c.from)}${miniTimer(c.to)}</div>` : `<div class="muted">${esc(c.from)} → <b>${esc(c.to)}</b></div>`}</li>`).join("");
+    const named = p => String(p).replace(/Habitación \d+/g, n => { const rr = S.rooms.find(x => x.name === n); return rr ? roomTitle(rr) : n; });
+    const md = r.menu_differences.map(c => `<li><b>${esc(named(c.path))}</b><div class="muted">ahora ${esc(es(c.current))} · en la copia <b>${esc(es(c.backup))}</b></div></li>`).join("");
+    return `<div class="bk-result ${n ? "" : "ok"}"><div class="bk-res-title">${n ? `${n} diferencia${n > 1 ? "s" : ""} con el equipo` : `${icon("check", "mini")} Sin cambios de configuración: todo coincide con el equipo`}</div>
+      ${r.applied ? `<div class="muted small">${title}</div>` : ""}${ch || md ? `<ul class="diff">${ch}${md}</ul>` : ""}</div>`;
+  };
+  const compare = async (name, apply, backup) => {
+    busy = name; open = name === "upload.json" ? open : name; render();
+    // live progress from the server's crawl counter
+    const tick = setInterval(async () => {
+      try {
+        const st = await api("/api/state");
+        const done = st.crawl_done || 0, exp = st.crawl_expected || 0;
+        const step = $("#bkStep"), bar = $("#bkBar");
+        if (step) step.textContent = exp ? `Leyendo ajustes del equipo: ${done} de ${exp}` : `Leyendo ajustes del equipo: ${done}`;
+        if (bar && exp) bar.style.width = Math.min(98, done / exp * 100) + "%";
+      } catch (e) {}
+    }, 1500);
+    timers.push(tick);
+    try {
+      const body = {apply: false, ...(backup ? {backup} : {})};
+      const r = await api(`/api/backups/${encodeURIComponent(name)}/restore`, {body});
+      const key = name === "upload.json" ? "upload" : name;
+      result[key] = diffHtml(r);
+      if (apply) {
+        busy = null; render();
+        if (!r.changes.length) { toast("No hay nombres ni horarios que restaurar"); return; }
+        if (!await ask({title: "¿Restaurar esta copia?", text: `Se escribirán ${r.changes.length} cambios de nombres y horarios en el termostato.`, input: false, ok: "Restaurar"})) return;
+        busy = name; render();
+        result[key] = diffHtml(await api(`/api/backups/${encodeURIComponent(name)}/restore`, {body: {...body, apply: true}}), "Restaurado"); rereadSoon();
+        toast("Copia restaurada");
+      }
+    } catch (e) {
+      const lost = /sin respuesta|no respond/i.test(e.message);
+      result[name] = `<div class="bk-result err"><div class="bk-res-title">${lost ? "El termostato dejó de responder mientras lo leíamos" : "No se pudo comparar"}</div>
+        <div class="muted small">${lost ? "Suele pasar si alguien usa el termostato o la app a la vez. Prueba de nuevo en un momento." : esc(shortErr(e.message))}</div>
+        <button class="btn" style="margin-top:10px" data-cmp="${esc(name)}">Reintentar</button></div>`;
+    }
+    clearInterval(tick);
+    busy = null; await loadState(); render();
+  };
+  const load = async () => { await loadState(); try { list = await api("/api/backups"); } catch (e) { toast(e.message); list = []; } render(); };
+  render(); load();
+}
+
+function miniTimer(slots) {
+  if (!slots) return "";
+  return `<span class="mt">${segments(slots).map(g => `<i class="slot-${g.mode}" style="flex:${g.end - g.start}"></i>`).join("")}</span>`;
+}
+
+// ---------- info / messages
+
+const LOG_TEXT = [
+  [/^Reinicio$/i, "El equipo se reinició"],
+  [/CAN_Bus está conectado/i, "Conectado con la centralita"],
+  [/CAN_Bus.*(desconectado|perdido|error)/i, "Se perdió la conexión con la centralita"],
+];
+function friendlyLog(msg) { for (const [re, t] of LOG_TEXT) if (re.test(msg)) return t; return msg; }
+
+async function viewInfo() {
+  let log = [];
+  try { log = await api("/api/log"); } catch (e) {}
+  // "2026-08-08 - 13:13 (116)" -> date, time; merge the same event logged within the same minute
+  const items = [];
+  for (const l of log) {
+    const m = /^(\d{4}-\d{2}-\d{2}) - (\d{2}:\d{2})/.exec(l.dt || "");
+    const date = m ? m[1] : "", time = m ? m[2] : l.dt, text = friendlyLog(l.msg);
+    const prev = items[items.length - 1];
+    if (prev && prev.date === date && prev.text === text && Math.abs(Number(prev.time.replace(":", "")) - Number(time.replace(":", ""))) <= 1) continue;
+    items.push({date, time, text, raw: l.msg});
+  }
+  const days = [];
+  for (const it of items) { const d = days[days.length - 1]; if (d && d.date === it.date) d.items.push(it); else days.push({date: it.date, items: [it]}); }
+  const fmtDate = d => d ? new Date(d + "T12:00").toLocaleDateString("es-ES", {weekday: "short", day: "numeric", month: "long", year: "numeric"}) : "";
+  const zones = Object.entries(zoneRooms()).map(([z, r]) => `zona ${esc(z)}: ${esc(roomTitle(r))}`).join(" · ");
+  const reboots = items.filter(i => /reinició/.test(i.text)).length;
+  $("#view").innerHTML = `
+    <a class="back" href="#/settings">${icon("back", "mini")} Ajustes</a>
+    <div class="page-head"><h3>Avisos</h3></div>
+    <p class="lead">${items.length ? `${reboots ? `Desde ${fmtDate(items[items.length - 1].date)} el equipo se ha reiniciado ${reboots} ${reboots === 1 ? "vez" : "veces"}, normalmente por cortes de luz, y siempre ha vuelto a conectar con la centralita. ` : ""}Último aviso: ${fmtDate(items[0].date)}.` : "El equipo no tiene avisos."}</p>
+    <div class="timeline">${days.map(d => `<div class="tl-day"><div class="tl-date">${esc(fmtDate(d.date))}</div>
+      ${d.items.map(i => `<div class="tl-item"><span class="tl-time">${esc(i.time)}</span><span class="tl-dot ${/reinició|perdió/.test(i.text) ? "warn" : ""}"></span><span title="${esc(i.raw)}">${esc(i.text)}</span></div>`).join("")}</div>`).join("")}</div>
+    <h2 class="group-title">Equipo</h2>
+    <div class="card">
+      <div class="kv"><span>Termostato</span><b>${esc(S.device.split(".")[0])}</b></div>
+      <div class="kv"><span>Firmware</span><b>${esc(fmtFirmware(S.firmware))}</b></div>
+      ${zones ? `<div class="kv"><span>Zonas</span><b>${zones}</b></div>` : ""}
+      <details class="adv" style="margin-top:10px"><summary>Detalles técnicos</summary>
+        <div class="small muted" style="margin-top:10px">Nabto ${esc(S.nabto || "—")} · funciones: ${Object.entries(S.features || {}).filter(([, v]) => v).map(([k]) => esc(k)).join(", ")}</div></details>
+    </div>`;
+}
+
+// ---------- settings
+
+const TRANSPORTS = {
+  udp: ["Directo", "Habla con el termostato por tu red, sin contraseñas. Es el modo recomendado."],
+  session: ["Con correo autorizado", "Igual que el directo, pero el termostato comprueba que tu correo esté autorizado. Útil si algún día el modo directo deja de funcionar."],
+  sdk: ["Librería oficial de Nabto", "La misma que usa la app de Sorel. No está incluida en esta instalación."],
+};
+
+async function viewSettings() {
+  let cfg;
+  try { cfg = await api("/api/settings"); } catch (e) { $("#view").innerHTML = `<div class="banner">No pude leer los ajustes: ${esc(e.message)}</div>`; return; }
+  let busy = false, advOpen = false;
+  const render = () => {
+    const theme = applyTheme();
+    const ip = cfg.addr.split(":")[0];
+    $("#view").innerHTML = `
+      <div class="page-head"><h3>Ajustes</h3></div>
+      <div class="card conn">
+        <span class="live ${S && S.error ? "err" : ""}"></span>
+        <div><b>${S && S.error ? "El termostato no responde" : "Conectado al termostato"}</b>
+          <div class="muted small">${esc(ip)} · ${esc(TRANSPORTS[cfg.active]?.[0] || cfg.active)} · firmware del ${esc(fmtFirmware(S?.firmware))}</div></div>
+      </div>
+      ${actionRow([
+        ["a", `href="#/backups"`, "archive", "Copias de seguridad", "Guardar y restaurar la configuración"],
+        ["a", `href="#/info"`, "bell", "Avisos", "Lo que ha pasado en el equipo"],
+      ])}
+      <h2 class="group-title">Apariencia</h2>
+      <div class="card"><div class="spread"><div><b>Tema</b><div class="muted small">«Sistema» sigue el modo claro u oscuro del móvil</div></div>
+        <div class="seg" id="themeSeg">${[["system", "Sistema"], ["light", "Claro"], ["dark", "Oscuro"]].map(([k, l]) => `<button data-theme-set="${k}" class="${k === theme ? "active" : ""}">${l}</button>`).join("")}</div></div></div>
+      <details class="card section adv" id="adv" ${advOpen ? "open" : ""}><summary>Avanzado: cómo conectar con el termostato</summary>
+        <div class="radio-list">${Object.entries(TRANSPORTS).map(([k, [title, text]]) => {
+          const ok = cfg.available.includes(k);
+          return `<label class="radio ${ok ? "" : "disabled"}"><input type="radio" name="transport" value="${k}" ${k === cfg.transport ? "checked" : ""} ${ok ? "" : "disabled"}>
+            <span><b>${esc(title)}</b>${ok ? "" : ' <span class="muted small">no disponible aquí</span>'}<br><span class="muted small">${esc(text)}</span></span></label>`;
+        }).join("")}</div>
+        <label class="field"><span>IP del termostato</span><input id="sHost" inputmode="decimal" value="${esc(cfg.host)}" placeholder="Buscar automáticamente"></label>
+        <label class="field" id="emailRow"><span>Correo autorizado</span><input id="sEmail" type="email" value="${esc(cfg.email || "")}" placeholder="tu-correo@ejemplo.com">
+          <small class="muted">Tiene que estar en Experto › Ajustes › WiFi › Control de acceso.</small></label>
+        <div class="actions" style="margin-top:14px"><button class="btn primary" id="sSave" ${busy ? "disabled" : ""}>${busy ? '<span class="spin"></span> Probando…' : "Probar y guardar"}</button></div>
+        <p class="muted small">Si el termostato no responde con el modo nuevo, se queda el que tenías.</p>
+      </details>`;
+    $("#adv").ontoggle = e => { advOpen = e.target.open; };
+    document.querySelectorAll("[data-theme-set]").forEach(b => b.onclick = () => { applyTheme(b.dataset.themeSet); render(); });
+    const syncEmail = () => { $("#emailRow").style.display = document.querySelector('input[name="transport"]:checked')?.value === "session" ? "" : "none"; };
+    document.querySelectorAll('input[name="transport"]').forEach(r => r.onchange = syncEmail);
+    syncEmail();
+    $("#sSave").onclick = async () => {
+      const transport = document.querySelector('input[name="transport"]:checked')?.value;
+      busy = true; render();
+      try { cfg = await api("/api/settings", {body: {transport, host: $("#sHost").value.trim(), email: $("#sEmail").value.trim()}}); toast("Conectado en modo " + TRANSPORTS[cfg.active][0].toLowerCase()); }
+      catch (e) { toast("No se aplicó: " + e.message, 7000); }
+      busy = false; render();
+    };
+  };
+  render();
+}
+
+loadState().then(route);
+</script>
+</body>
+</html>

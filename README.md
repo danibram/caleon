@@ -1,0 +1,218 @@
+# caleon
+
+[Español](README.es.md)
+
+A Rust server to monitor and control a SOREL °CALEON thermostat from your own network, with no Sorel app and
+no Sorel cloud. Made to run on a NAS with Docker. Pure Rust: it does not need the Nabto SDK.
+
+> Independent project, not affiliated with SOREL or Nabto. The protocol comes from watching how the official
+> app talks to the device. It writes to your heating: use it at your own risk.
+
+The web UI covers everything the official app does (°CALEON 7.0.36) and a bit more. It is designed for the
+phone first (bottom tab bar, light and dark theme, page transitions) and works the same on a desktop. The UI
+text is in Spanish.
+
+- Home: rooms with temperature, humidity, setpoint (+/−), mode (Off, Normal, Eco, Comfort, with the Comfort
+  countdown) and the global control for all rooms. Shows "Heating" when the relay of that room's zone is on.
+- Room: schedules, holidays (start and end), season change when the device allows it, name, notices, expert
+  menu, status and its history.
+- Schedules: all 7 days in half-hour slots for heating and cooling, painted with the mouse or a finger, plus
+  "copy to next day / Monday-Friday / Saturday-Sunday / Monday-Sunday".
+- Expert: the device's whole menu (language, date and time, devices, rooms, °Cbox functions, zones, WiFi,
+  service values, lock, factory values...). It is the same remote menu the app draws: the °CALEON sends each
+  screen and the web renders it.
+- Status: inputs (1-Wire sensors, humidity, PWM), outputs (pump and zone relays, with the room each zone heats)
+  and the circuit pump.
+- Charts: temperature and setpoint per room, humidity, every device sensor and a timeline of when each relay
+  was on. 6 h, 24 h, 7 d and 30 d.
+- Backups: the whole configuration as JSON (manual, or daily only when something changed), download, upload,
+  comparison with the device and restore of names and schedules.
+- Notices: the device's message log, firmware and enabled features.
+- Settings: connection mode (direct, session or SDK) and the thermostat's IP.
+
+## How it talks to the thermostat
+
+The °CALEON uses Nabto 4 (uNabto). Besides the encrypted protocol the app uses through the cloud, uNabto ships
+with a local protocol enabled by default (`NABTO_ENABLE_LOCAL_ACCESS_LEGACY_PROTOCOL`): each RPC query is one
+UDP packet to port 5570, with no session and no encryption. The server speaks that protocol in pure Rust
+(`src/transport.rs`) and encodes each query according to `unabto_queries.xml` (`src/schema.rs`). The answers
+come out with the same JSON shape the official SDK returns.
+
+It depends on no closed library, so it runs on any architecture: x86_64 or ARM NAS, Raspberry Pi and Mac,
+all native.
+
+The connection mode is chosen in Settings:
+
+- **Direct over the local network** (default): the UDP protocol above, with no access control.
+- **Session with e-mail**: uNabto's local connection with a session (`U_CONNECT` plus `DATA` packets with the
+  null cipher). Same as direct but with access control: it needs an e-mail that is authorized on the device
+  (Expert › Settings › WiFi › Access control). A fallback in case the direct mode ever stops working.
+- **Official Nabto SDK**: the closed Nabto 4.3 library, x86_64 only. Only offered when the binary was built
+  with `--features nabto-sdk` (see below).
+
+The change is applied only if the thermostat answers in the new mode, and it is saved in
+`DATA_DIR/settings.json`.
+
+Any computer on your network can talk to the thermostat this way, with no password. That is how it ships from
+the factory; this server does not open anything. Keep it in mind if your network has guests.
+
+### Nabto SDK (optional)
+
+The Nabto 4 client library is closed source and is not in this repository. If you have it, copy the static
+libraries to `vendor/nabto4/linux64/lib` (or `vendor/nabto4/mac64/lib`) and the header to
+`vendor/nabto4/include`, or point `NABTO_SDK_DIR` at a directory with that layout. `vendor/` is in
+`.gitignore`. Then build with `cargo build --release --features nabto-sdk`.
+
+## Install on a NAS
+
+With the code on the NAS:
+
+```sh
+docker compose up -d --build
+```
+
+Or build on another machine and copy the image over (change the platform if your NAS is ARM):
+
+```sh
+docker build --platform linux/amd64 -t caleon:latest .
+docker save caleon:latest | gzip > caleon-amd64.tar.gz
+# on the NAS
+docker load < caleon-amd64.tar.gz
+docker compose up -d        # with docker-compose.yml and a data/ folder next to it
+```
+
+To include the SDK mode as well (amd64 only, with the SDK copied to `vendor/nabto4`):
+
+```sh
+docker build --platform linux/amd64 --build-arg FEATURES=nabto-sdk -t caleon:latest .
+```
+
+The web UI is at `http://<nas-ip>:8088`. It has no user or password: anyone on your network can change the
+heating. If you expose it outside your home, put it behind an authenticating proxy or a VPN.
+
+`network_mode: host` lets the server find the thermostat by broadcast. With a fixed IP (`CALEON_HOST` or in
+Settings) it also works on a normal bridge network publishing port 8088.
+
+Docker Desktop on macOS does not let containers reach the LAN over UDP (not even a minimal script), so on a Mac
+the container cannot find the thermostat. A Linux NAS has no such problem.
+
+### Configuration (environment variables)
+
+| Variable | Default | |
+|---|---|---|
+| `BIND` | `0.0.0.0:8088` | address and port of the web UI |
+| `DATA_DIR` | `/data` in Docker | `settings.json`, `history.sqlite` and `backups/` |
+| `CALEON_HOST` | discovery | fixed IP of the thermostat, for example `192.168.1.50` |
+| `CALEON_DEVICE` | first to answer | device ID when you have several, for example `0123456789ab.sorel-connect.net` |
+| `TRANSPORT` | `udp` | initial mode (`udp`, `session` or `sdk`); afterwards the choice in Settings wins |
+| `CALEON_EMAIL` | (empty) | authorized e-mail for the `session` mode |
+| `POLL_SECONDS` | `60` | how often the device is read and a sample stored |
+| `BACKUP_HOURS` | `24` | how often the configuration is checked; a backup is written only when something changed. `0` disables it |
+| `BACKUP_KEEP` | `30` | automatic backups to keep |
+| `READ_ONLY` | (empty) | with `1`, the web shows everything but the server refuses every change to the thermostat (for a display-only screen or for testing) |
+
+The thermostat treats every remote query as someone using it and keeps its screen lit. With one read per
+minute the screen turns off between reads; with several servers or tabs reading it at once, it does not.
+
+## Backups
+
+Each backup is a JSON file with:
+
+- rooms: name, type, state and the weekly heating and cooling schedules;
+- the global control and the hot water schedule, when present;
+- which zone heats each room;
+- the whole expert menu tree with the value of every screen.
+
+To read the menu, the server walks it as a person would on the screen: it only enters submenus and goes back.
+It never presses yes/no, +/− or selections, and it does not enter Factory values, System update or Select
+network (that one starts a WiFi scan). It takes about a minute.
+
+A restore writes room names and schedules. Expert menu settings are only compared, because the device does not
+allow writing them directly: they are changed step by step with +/− from Expert, and the comparison tells you
+which screens differ.
+
+## Development
+
+The web UI is React (`web/`). The Rust binary serves an embedded `web/dist`; during development use the Vite
+proxy instead.
+
+```sh
+cargo test
+# terminal 1: API (READ_ONLY=1 so nothing is written to the thermostat)
+READ_ONLY=1 DATA_DIR=./data BIND=127.0.0.1:8088 cargo run --release
+# terminal 2: UI with hot reload (proxies /api and /icons to port 8088)
+cd web && pnpm install && pnpm dev
+```
+
+`CALEON_API=http://127.0.0.1:8089 pnpm dev` points the proxy at another server. `VITE_MOCK=1 pnpm dev` starts
+the UI with no server and no thermostat: it answers with the captured data in `web/src/mocks`, with timestamps
+shifted to now, and rejects changes like a read-only server.
+
+To bundle the UI into the binary: `cd web && pnpm build`, then `cargo build --release`.
+
+TypeScript types from the Rust structs: `cargo test export_types` (writes `web/src/api/generated/`).
+
+On macOS it runs natively. The first time, the system asks for the "Local network" permission for the binary;
+without it the thermostat is not found. To try the SDK mode, build for Intel and run under Rosetta:
+`cargo run --target x86_64-apple-darwin --features nabto-sdk`.
+
+CI (`.github/workflows/ci.yml`) runs `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test`,
+`pnpm lint`, `pnpm build` and builds the Docker image.
+
+## API
+
+| Method | Path | |
+|---|---|---|
+| GET/POST | `/api/settings` | connection mode and IP: `{"transport": "udp", "host": ""}` |
+| GET | `/api/state` | full state: rooms, global control, device status, zones, features |
+| POST | `/api/refresh` | forces a read |
+| POST | `/api/rooms/{id}` | `{"tdelta": 1}`, `{"mode": "eco"}`, `{"name": "Salón"}`, `{"season": "cooling"}`, `{"vacation": "2026-11-01 12:00"}` or `{"vacation": null}` |
+| GET | `/api/rooms/{id}/timer?type=0` | weekly schedule (0 heating, 1 cooling; id 65535 is hot water) |
+| PUT | `/api/rooms/{id}/timer/{day}` | `{"slots": [48 modes]}`, day 0 = Monday |
+| POST | `/api/rooms/{id}/timer/{day}/copy` | `{"mask": 31}`, bit 0 = Monday |
+| POST | `/api/menu/action` | `{"id": "cal:1", "action": "goto:18"}`: an expert menu action, returns the new screen |
+| GET | `/api/menu/detail?id=&type=` | rereads a screen without moving the menu |
+| POST | `/api/menu/set` | date, time, text or timer of a screen |
+| POST | `/api/menu/open` | `{"path": ["Ajustes", "Zonas"]}`: opens the menu at that path of titles (only follows entries that open screens) |
+| GET | `/api/menu/values` | the value of every menu screen, from the latest backup |
+| GET | `/api/history?hours=24` | history per room |
+| GET | `/api/metrics?hours=24` | history of every status value |
+| GET | `/api/log` | device notices |
+| GET/POST | `/api/backups` | list / create a backup |
+| GET/DELETE | `/api/backups/{name}` | download / delete |
+| POST | `/api/backups/{name}/restore` | `{"apply": false}` compares; `{"apply": true}` restores; accepts `"backup": {...}` for an uploaded file |
+
+Room IDs start at 0. 65535 is "all rooms". After every change the server rereads the device a few times in
+the background, so valves and pump show up as soon as they react.
+
+## Protocol details
+
+- UDP packet: `<hdr u32> <seq u32> <0 u32> <query id u32> <parameters>`, all big-endian. The answer repeats
+  the header with bit `0x00800000` set (and `0x00400000` when the device rejected the query). Parameters go in
+  the order of the XML: integers at their size, `raw` as a u16 length plus the bytes, lists as a u16 count plus
+  each element.
+- Discovery: `<1> <seq> <0> "*\0"` broadcast to port 5570. Each device answers with its IP, port and ID.
+- Reads are retried. Relative changes (setpoint ±1 and menu actions) are sent once, so a lost answer cannot
+  apply them twice.
+- `room_state.json?id=N&tdelta=0&season=&vacation=&mode=&name=` reads a room. Empty text parameters mean "leave
+  unchanged"; when set, they are NUL-terminated. `tdelta=±1` moves the setpoint by 0.5 °C.
+- `room_timer.json`: 21 32-bit integers, 3 per day, 2 bits per half hour (0 off, 1 normal, 2 eco, 3 comfort).
+  `day=-1` only reads.
+- The expert menu is `action_2.json?id=<screen>&action=<action>` (`goto:N`, `bit:N`, `sel:0x…`, `plus`,
+  `minus`, `back`, `forward`, `exit`, `status`). Each screen type has its own detail query
+  (`string_list_2.json`, `dynamic_list_2.json`, `options.json`, `information.json`...). Those queries read by id
+  without moving the menu cursor, so the server reads the status screen (`cal:9`, `cal:9.1`) every minute
+  without getting in the way.
+- Session mode: `U_CONNECT` with an IPX payload and a CP_ID (the e-mail). The device answers with NOTIFY
+  connect-ok (0x0001) and a session id; an unauthorized e-mail gets 0x8004. Each RPC goes in a `DATA` packet
+  with a CRYPT payload of suite 0x000A (no encryption), 1-2 padding bytes and a 16-bit checksum at the end
+  (counted in the payload length). Sequence in bytes 12-13, about 150 RPCs per session with 250 ms between
+  sends.
+- With the SDK mode on Linux, `build.rs` forces the `bfd` linker: the SDK was built with GCC 4.9 and registers
+  constructors in `.ctors` sections, which `lld`, rustc's default linker, does not run.
+
+## License
+
+MIT, see [LICENSE](LICENSE). `unabto_queries.xml` is the °CALEON's RPC interface definition, the same one the
+official app carries; without it the server cannot encode the queries. SOREL, °CALEON and Nabto are trademarks
+of their owners.

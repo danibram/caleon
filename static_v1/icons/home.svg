@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 54 54">
+    <defs>
+    </defs>
+    <title>location_icon_attic</title>
+    <g id="Circle">
+        <circle class="icon-background" cx="27" cy="27" r="27"/>
+    </g>
+    <g id="Artwork">
+        <path class="icon-foreground" d="M46.16,23.34,28.66,7.84a1,1,0,0,0-1.33,0L9.84,23.34a1,1,0,1,0,1.33,1.5l1.62-1.44V41.59a4,4,0,0,0,4,4H39.22a4,4,0,0,0,4-4V23.4l1.62,1.44a1,1,0,1,0,1.33-1.5ZM41.22,34.42H14.78V25.83H41.22Zm-2,9.17H16.78a2,2,0,0,1-2-2V35.42H41.22v6.17A2,2,0,0,1,39.22,43.58Zm2-18.75H14.78v-3.2L28,9.92,41.22,21.63Z" transform="translate(-1 -1)"/>
+    </g>
+</svg>

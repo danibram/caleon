@@ -1,0 +1,28 @@
+/* No preflight: caleon.css carries the original base styles and its own resets. */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+@import './caleon.css';
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-soft: var(--soft);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-on-accent: var(--on-accent);
+  --color-eco: var(--eco);
+  --color-normal: var(--normal);
+  --color-turbo: var(--turbo);
+  --color-off: var(--off);
+  --color-cool: var(--cool);
+  --color-warn-bg: var(--warn-bg);
+  --color-warn-ink: var(--warn-ink);
+  --radius-card: var(--radius);
+  --shadow-card: var(--shadow);
+  --shadow-card-sm: var(--shadow-sm);
+}

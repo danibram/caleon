@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 54 54">
+    <defs>
+    </defs>
+    <title>location_icon_office</title>
+    <g id="Circle">
+        <circle class="icon-background" cx="27" cy="27" r="27"/>
+    </g>
+    <g id="Artwork">
+        <path class="icon-foreground" d="M45,25.22H17.92l-3.25-6.05A1.33,1.33,0,0,0,15,18L21,14.24l-.54,1.5a.5.5,0,0,0,.47.67h6.65a.5.5,0,0,0,.47-.67l-1.85-5.18a2,2,0,0,0-3.9,0l-.77,2.16-7.14,4.46a1.37,1.37,0,1,0-.82,2.47l.16,0,3,5.58H11a.5.5,0,0,0-.5.5V44.34a.5.5,0,0,0,1,0V32.43H31.25V44.34a.5.5,0,0,0,.5.5H45a.5.5,0,0,0,.5-.5V25.72A.5.5,0,0,0,45,25.22ZM23.29,10.9h0a1.05,1.05,0,0,1,2,0l1.61,4.51H21.68Zm9,21.52H44.5v5.21H32.25ZM44.5,26.22v5.21H32.25V26.22Zm-33,0H31.25v5.21H11.5ZM32.25,38.64H44.5v5.21H32.25Z" transform="translate(-1 -1)"/>
+        <path class="icon-foreground" d="M37,28.22h2.75a.5.5,0,0,0,0-1H37a.5.5,0,0,0,0,1Z" transform="translate(-1 -1)"/>
+        <path class="icon-foreground" d="M39.75,33.43H37a.5.5,0,0,0,0,1h2.75a.5.5,0,0,0,0-1Z" transform="translate(-1 -1)"/>
+        <path class="icon-foreground" d="M39.75,39.64H37a.5.5,0,0,0,0,1h2.75a.5.5,0,0,0,0-1Z" transform="translate(-1 -1)"/>
+    </g>
+</svg>
