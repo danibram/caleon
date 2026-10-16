@@ -1,12 +1,12 @@
 //! HTTP API and the embedded web UI.
 
 use crate::app::{now, App};
-use crate::device::{self, RoomChange, ROOM_MODES, SYSTEM_ROOM};
 use axum::extract::{Path, Query, State};
 use axum::http::{header, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post, put};
 use axum::{Json, Router};
+use caleon::device::{self, RoomChange, ROOM_MODES, SYSTEM_ROOM};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -120,11 +120,11 @@ async fn index() -> impl IntoResponse {
 }
 
 #[derive(rust_embed::RustEmbed)]
-#[folder = "web/dist"]
+#[folder = "$CARGO_MANIFEST_DIR/../../web/dist"]
 struct WebDist;
 
 #[derive(rust_embed::RustEmbed)]
-#[folder = "static/icons"]
+#[folder = "$CARGO_MANIFEST_DIR/../../static/icons"]
 struct Icons;
 
 fn spa_index() -> Response {
@@ -658,7 +658,7 @@ async fn settings_set(State(app): State<AppState>, Json(b): Json<SettingsBody>) 
     );
     blocking(&app, move |a| {
         let want = a.device.id.clone();
-        let found = crate::connection::locate(&host, &want)?;
+        let found = caleon::locate(&host, &want)?;
         let settings = crate::connection::Settings {
             transport: b.transport.clone(),
             host,

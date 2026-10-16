@@ -4,9 +4,9 @@
 //! "116.B Zona B: Off", grouped under headings like "Entradas:" or "Bomba circuito 116.1".
 
 use serde::Serialize;
-use ts_rs::TS;
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct Metric {
     /// Stable key used for the history, e.g. "Entradas · 116.1 [°C]".
     pub key: String,

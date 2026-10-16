@@ -6,7 +6,6 @@ use anyhow::{anyhow, bail, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::sync::{Arc, RwLock};
-use ts_rs::TS;
 
 pub const SYSTEM_ROOM: u16 = 65535;
 pub const ROOM_MODES: [&str; 4] = ["off", "regular", "eco", "turbo"];
@@ -30,7 +29,8 @@ pub struct Device {
     transport: RwLock<Arc<dyn Transport>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct RoomState {
     pub tset: String,
     pub mode: String,

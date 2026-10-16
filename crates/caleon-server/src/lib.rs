@@ -1,12 +1,9 @@
+//! The web server: polls the thermostat through the `caleon` crate, keeps history in SQLite,
+//! makes configuration backups and serves the embedded web UI and the HTTP API.
+
 pub mod app;
 pub mod connection;
-pub mod device;
-#[cfg(feature = "nabto-sdk")]
-pub mod nabto;
-pub mod schema;
-pub mod status;
 pub mod store;
-pub mod transport;
 pub mod web;
 
 use anyhow::{Context, Result};
@@ -37,16 +34,16 @@ pub async fn run() -> Result<()> {
     let want_id = env("CALEON_DEVICE", "");
     let found = {
         let (host, want) = (settings.host.clone(), want_id.clone());
-        tokio::task::spawn_blocking(move || connection::locate(&host, &want)).await??
+        tokio::task::spawn_blocking(move || caleon::locate(&host, &want)).await??
     };
     let device_id = found.id.clone();
     tracing::info!("°CALEON {device_id} at {}", found.addr);
-    let schema = Arc::new(schema::Schema::parse(connection::INTERFACE_XML)?);
+    let schema = Arc::new(caleon::schema()?);
     let transport = connection::build(&settings, &found, &schema, &data_dir)?;
     tracing::info!("connection mode: {}", transport.kind());
 
     let app = Arc::new(app::App {
-        device: device::Device::new(device_id.clone(), transport),
+        device: caleon::Device::new(device_id.clone(), transport),
         store: store::Store::open(&data_dir.join("history.sqlite"))?,
         data_dir: data_dir.clone(),
         snapshot: RwLock::new(app::Snapshot {

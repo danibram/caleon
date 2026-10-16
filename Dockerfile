@@ -17,7 +17,7 @@ COPY . .
 COPY --from=web /web/dist ./web/dist
 RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
     --mount=type=cache,id=caleon-target-${TARGETARCH},target=/src/target \
-    cargo build --release ${FEATURES:+--features $FEATURES} && cp target/release/caleon /caleon
+    cargo build --release -p caleon-server ${FEATURES:+--features $FEATURES} && cp target/release/caleon /caleon
 
 FROM debian:bookworm-slim
 COPY --from=build /caleon /usr/local/bin/caleon

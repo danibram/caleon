@@ -82,11 +82,11 @@ The terms of use of those libraries are Nabto's, not this project's.
 
 ```sh
 # Linux x86_64 (needs GNU ld, the binutils package)
-cargo build --release --features nabto-sdk
+cargo build --release -p caleon-server --features nabto-sdk
 
 # macOS: the library is Intel only; on Apple Silicon it runs under Rosetta
 rustup target add x86_64-apple-darwin
-cargo build --release --target x86_64-apple-darwin --features nabto-sdk
+cargo build --release -p caleon-server --target x86_64-apple-darwin --features nabto-sdk
 
 # Docker (amd64 only), with vendor/nabto4 already copied next to the Dockerfile
 docker build --platform linux/amd64 --build-arg FEATURES=nabto-sdk -t caleon:latest .
@@ -181,6 +181,42 @@ A restore writes room names and schedules. Expert menu settings are only compare
 allow writing them directly: they are changed step by step with +/− from Expert, and the comparison tells you
 which screens differ.
 
+## Repository layout
+
+A Cargo workspace plus the web package:
+
+- `crates/caleon`: the client library. Discovery, the UDP and session transports (and the SDK one behind the
+  `nabto-sdk` feature), rooms, schedules, the expert menu and the status screen parser. No server and no
+  async runtime.
+- `crates/caleon-server`: the `caleon` binary. HTTP API, SQLite history, poller, backups and the embedded
+  web UI.
+- `web/`: the React UI (pnpm). `cargo test export_types` writes its API types from the server structs.
+- `static/icons`: the device's SVG icons, served by the server and by the Vite mock.
+
+To talk to the thermostat from another Rust project, depend on the library alone:
+
+```toml
+[dependencies]
+caleon = { git = "https://github.com/<user>/caleon" }   # or path = "../caleon/crates/caleon"
+```
+
+```rust
+use std::sync::Arc;
+use caleon::device::{Device, RoomChange};
+use caleon::transport::UdpTransport;
+
+let found = caleon::locate("", "")?; // broadcast discovery, or ("192.168.1.50", "")
+let transport = UdpTransport::new(found.addr, Arc::new(caleon::schema()?))?;
+let device = Device::new(found.id, Arc::new(transport));
+for (id, room) in device.room_list()?.iter().enumerate() {
+    let state = device.room_state(id as u16, &RoomChange::default())?;
+    println!("{}: {} ({})", room["name"], room["temperature"], state.mode);
+}
+```
+
+Reads can be repeated freely; `tdelta` and menu actions are relative and are sent once. The `ts` feature
+adds `ts-rs` derives to the public structs and `nabto-sdk` adds the SDK transport.
+
 ## Development
 
 The web UI is React (`web/`). The Rust binary serves an embedded `web/dist`; during development use the Vite
@@ -204,7 +240,7 @@ TypeScript types from the Rust structs: `cargo test export_types` (writes `web/s
 
 On macOS it runs natively. The first time, the system asks for the "Local network" permission for the binary;
 without it the thermostat is not found. To try the SDK mode, build for Intel and run under Rosetta:
-`cargo run --target x86_64-apple-darwin --features nabto-sdk`.
+`cargo run -p caleon-server --target x86_64-apple-darwin --features nabto-sdk`.
 
 CI (`.github/workflows/ci.yml`) runs `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test`,
 `pnpm lint`, `pnpm build` and builds the Docker image.
@@ -258,11 +294,11 @@ the background, so valves and pump show up as soon as they react.
   with a CRYPT payload of suite 0x000A (no encryption), 1-2 padding bytes and a 16-bit checksum at the end
   (counted in the payload length). Sequence in bytes 12-13, about 150 RPCs per session with 250 ms between
   sends.
-- With the SDK mode on Linux, `build.rs` forces the `bfd` linker: the SDK was built with GCC 4.9 and registers
+- With the SDK mode on Linux, `crates/caleon/build.rs` forces the `bfd` linker: the SDK was built with GCC 4.9 and registers
   constructors in `.ctors` sections, which `lld`, rustc's default linker, does not run.
 
 ## License
 
-MIT, see [LICENSE](LICENSE). `unabto_queries.xml` is the °CALEON's RPC interface definition, the same one the
+MIT, see [LICENSE](LICENSE). `crates/caleon/unabto_queries.xml` is the °CALEON's RPC interface definition, the same one the
 official app carries; without it the server cannot encode the queries. SOREL, °CALEON and Nabto are trademarks
 of their owners.

@@ -1,12 +1,12 @@
 //! Shared state, the poller, the menu crawler and configuration backups.
 
 use crate::connection::Settings;
-use crate::device::{self, Device, RoomChange, RoomState, SYSTEM_ROOM};
-use crate::schema::Schema;
-use crate::status::{self, Metric};
 use crate::store::{RoomSample, Store};
-use crate::transport::Found;
 use anyhow::{anyhow, bail, Result};
+use caleon::device::{self, Device, RoomChange, RoomState, SYSTEM_ROOM};
+use caleon::schema::Schema;
+use caleon::status::{self, Metric};
+use caleon::transport::Found;
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 use std::path::PathBuf;

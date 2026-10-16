@@ -1,0 +1,24 @@
+[package]
+name = "caleon"
+description = "Client library for SOREL °CALEON thermostats over their local uNabto protocol"
+readme = "../../README.md"
+keywords = ["sorel", "caleon", "thermostat", "nabto", "home-automation"]
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+roxmltree = "0.20"
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+ts-rs = { workspace = true, optional = true }
+
+[features]
+# TypeScript definitions of the public structs (ts-rs), used by the server to type its web UI.
+ts = ["dep:ts-rs"]
+# Optional transport through the closed-source Nabto 4 client SDK (x86_64 only, see README).
+nabto-sdk = []
