@@ -1,0 +1,180 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "title": "°CALEON",
+  "uid": "caleon",
+  "tags": ["caleon", "heating"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "1m",
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Temperatura y objetivo",
+      "gridPos": { "h": 10, "w": 16, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        { "refId": "A", "expr": "caleon_room_temperature_celsius", "legendFormat": "{{room}}" },
+        { "refId": "B", "expr": "caleon_room_setpoint_celsius", "legendFormat": "{{room}} · objetivo" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "decimals": 1,
+          "custom": { "lineWidth": 2, "lineInterpolation": "stepAfter", "showPoints": "never", "fillOpacity": 0 }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": ".*objetivo" },
+            "properties": [
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [6, 4] } },
+              { "id": "custom.lineWidth", "value": 1 }
+            ]
+          }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Última lectura",
+      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [{ "refId": "A", "expr": "time() - caleon_last_read_timestamp_seconds", "legendFormat": "hace" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 180 }, { "color": "red", "value": 600 }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none", "textMode": "value" }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Termostato",
+      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 5 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [{ "refId": "A", "expr": "caleon_up", "legendFormat": "estado" }],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "Sin respuesta", "color": "red" }, "1": { "text": "Conectado", "color": "green" } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "value" }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Humedad",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [{ "refId": "A", "expr": "caleon_room_humidity_percent", "legendFormat": "{{room}}" }],
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "decimals": 0, "custom": { "lineWidth": 2, "showPoints": "never", "fillOpacity": 8 } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 5,
+      "type": "state-timeline",
+      "title": "Modo de cada habitación",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (room) ((caleon_room_mode{mode=\"off\"} == 1) * 0 or (caleon_room_mode{mode=\"eco\"} == 1) * 1 or (caleon_room_mode{mode=\"regular\"} == 1) * 2 or (caleon_room_mode{mode=\"turbo\"} == 1) * 3)",
+          "legendFormat": "{{room}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "fillOpacity": 70, "lineWidth": 0 },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "text": "Apagado", "color": "transparent" },
+                "1": { "text": "Eco", "color": "green" },
+                "2": { "text": "Normal", "color": "yellow" },
+                "3": { "text": "Confort", "color": "orange" }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": { "showValue": "never", "mergeValues": true, "rowHeight": 0.8, "legend": { "displayMode": "hidden" } }
+    },
+    {
+      "id": 6,
+      "type": "state-timeline",
+      "title": "Cuándo ha calentado cada habitación",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [{ "refId": "A", "expr": "caleon_room_heating", "legendFormat": "{{room}}" }],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "fillOpacity": 70, "lineWidth": 0 },
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "parada", "color": "transparent" }, "1": { "text": "calentando", "color": "orange" } } }
+          ]
+        },
+        "overrides": []
+      },
+      "options": { "showValue": "never", "mergeValues": true, "rowHeight": 0.8, "legend": { "displayMode": "hidden" } }
+    },
+    {
+      "id": 7,
+      "type": "state-timeline",
+      "title": "Bomba, válvulas y caldera",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [{ "refId": "A", "expr": "caleon_status{group=\"Salidas\"}", "legendFormat": "{{label}}" }],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "fillOpacity": 70, "lineWidth": 0 },
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "off", "color": "transparent" }, "1": { "text": "on", "color": "blue" } } }
+          ]
+        },
+        "overrides": []
+      },
+      "options": { "showValue": "never", "mergeValues": true, "rowHeight": 0.8, "legend": { "displayMode": "hidden" } }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Sensores del equipo",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 26 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [{ "refId": "A", "expr": "caleon_status{unit=\"°C\"}", "legendFormat": "{{group}} · {{label}}" }],
+      "fieldConfig": {
+        "defaults": { "unit": "celsius", "decimals": 1, "custom": { "lineWidth": 1, "showPoints": "never", "fillOpacity": 0 } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    }
+  ]
+}

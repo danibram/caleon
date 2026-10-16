@@ -12,6 +12,14 @@ The web UI covers everything the official app does (°CALEON 7.0.36) and a bit m
 phone first (bottom tab bar, light and dark theme, page transitions) and works the same on a desktop. The UI
 text is in Spanish.
 
+<p align="center">
+  <img src="docs/screenshots/home.png" width="180" alt="Home: rooms, modes and today's temperatures">
+  <img src="docs/screenshots/room.png" width="180" alt="A room: gauge, setpoint and program">
+  <img src="docs/screenshots/schedule.png" width="180" alt="Weekly schedule editor">
+  <img src="docs/screenshots/charts.png" width="180" alt="Charts">
+</p>
+<p align="center"><img src="docs/screenshots/desktop.png" width="720" alt="Home on a desktop"></p>
+
 - Home: rooms with temperature, humidity, setpoint (+/−), mode (Off, Normal, Eco, Comfort, with the Comfort
   countdown) and the global control for all rooms. Shows "Heating" when the relay of that room's zone is on.
 - Room: schedules, holidays (start and end), season change when the device allows it, name, notices, expert
@@ -161,6 +169,7 @@ the container cannot find the thermostat. A Linux NAS has no such problem.
 | `POLL_SECONDS` | `60` | how often the device is read and a sample stored |
 | `BACKUP_HOURS` | `24` | how often the configuration is checked; a backup is written only when something changed. `0` disables it |
 | `BACKUP_KEEP` | `30` | automatic backups to keep |
+| `PROMETHEUS` | `1` | `/metrics` in Prometheus format; `0` turns it off |
 | `READ_ONLY` | (empty) | with `1`, the web shows everything but the server refuses every change to the thermostat (for a display-only screen or for testing) |
 
 The thermostat treats every remote query as someone using it and keeps its screen lit. With one read per
@@ -182,6 +191,36 @@ network (that one starts a WiFi scan). It takes about a minute.
 A restore writes room names and schedules. Expert menu settings are only compared, because the device does not
 allow writing them directly: they are changed step by step with +/− from Expert, and the comparison tells you
 which screens differ.
+
+## Prometheus and Grafana
+
+The server exposes its last read at `/metrics` in Prometheus text format (`PROMETHEUS=0` turns it off).
+Everything is a gauge:
+
+| Metric | Labels | |
+|---|---|---|
+| `caleon_room_temperature_celsius` | `id`, `room`, `type` | room temperature |
+| `caleon_room_humidity_percent` | `id`, `room`, `type` | rooms with a humidity sensor |
+| `caleon_room_setpoint_celsius` | `id`, `room`, `type` | absent while the room is off |
+| `caleon_room_mode` | `id`, `room`, `type`, `mode` | 1 for the active mode (`off`, `regular`, `eco`, `turbo`), 0 for the others |
+| `caleon_room_heating` | `id`, `room`, `type` | 1 while a zone valve of the room is open |
+| `caleon_output_on` | `id`, `room`, `type`, `zone`, `output` | each zone valve |
+| `caleon_status` | `key`, `group`, `label`, `unit` | every numeric value of the status screens: sensors, pump, boiler demand |
+| `caleon_up`, `caleon_last_read_timestamp_seconds` | | whether the last read worked, and when |
+
+The device is read once a minute (`POLL_SECONDS`), so a shorter scrape interval only repeats values:
+
+```yaml
+scrape_configs:
+  - job_name: caleon
+    scrape_interval: 60s
+    static_configs:
+      - targets: ["<nas-ip>:8088"]
+```
+
+`contrib/grafana/caleon.json` is a dashboard to import in Grafana: temperature and setpoint per room, humidity,
+the mode of each room over time, when each room heated, pump, valves and boiler demand, and the device
+sensors. It asks for your Prometheus data source on import.
 
 ## Repository layout
 

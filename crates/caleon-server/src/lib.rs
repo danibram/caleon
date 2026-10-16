@@ -55,6 +55,7 @@ pub async fn run() -> Result<()> {
         crawl_expected: std::sync::atomic::AtomicUsize::new(0),
         backup_hours,
         read_only: matches!(env("READ_ONLY", "0").as_str(), "1" | "true" | "yes"),
+        prometheus: matches!(env("PROMETHEUS", "1").as_str(), "1" | "true" | "yes"),
         schema,
         conn: RwLock::new((settings, found)),
     });

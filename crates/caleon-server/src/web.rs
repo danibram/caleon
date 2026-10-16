@@ -1,6 +1,6 @@
 //! HTTP API and the embedded web UI.
 
-use crate::app::{now, App};
+use crate::app::{now, parse_number, App};
 use axum::extract::{Path, Query, State};
 use axum::http::{header, StatusCode};
 use axum::response::{IntoResponse, Response};
@@ -93,6 +93,7 @@ pub fn router(app: AppState) -> Router {
     Router::new()
         .route("/", get(index))
         .route("/icons/:name", get(icon))
+        .route("/metrics", get(prometheus))
         .route("/api/state", get(state))
         .route("/api/refresh", post(refresh))
         .route("/api/history", get(history))
@@ -225,6 +226,153 @@ async fn state(State(app): State<AppState>) -> Json<Value> {
     v["read_only"] = json!(app.read_only);
     v["mode_temps"] = app.store.mode_temps();
     Json(v)
+}
+
+/// The last read in Prometheus text format, for a scrape job (PROMETHEUS=0 turns it off).
+async fn prometheus(State(app): State<AppState>) -> Response {
+    if !app.prometheus {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+    let snap = app.snapshot.read().unwrap().clone();
+    (
+        [(
+            header::CONTENT_TYPE,
+            "text/plain; version=0.0.4; charset=utf-8",
+        )],
+        prometheus_text(&snap),
+    )
+        .into_response()
+}
+
+fn prometheus_text(snap: &crate::app::Snapshot) -> String {
+    type Labels<'a> = Vec<(&'a str, &'a str)>;
+    fn esc(s: &str) -> String {
+        s.replace('\\', "\\\\")
+            .replace('"', "\\\"")
+            .replace('\n', "\\n")
+    }
+    fn labels(l: &[(&str, &str)]) -> String {
+        if l.is_empty() {
+            return String::new();
+        }
+        format!(
+            "{{{}}}",
+            l.iter()
+                .map(|(k, v)| format!("{k}=\"{}\"", esc(v)))
+                .collect::<Vec<_>>()
+                .join(",")
+        )
+    }
+    let mut out = String::new();
+    let mut metric = |name: &str, help: &str, samples: &[(Labels, f64)]| {
+        if samples.is_empty() {
+            return;
+        }
+        out.push_str(&format!("# HELP {name} {help}\n# TYPE {name} gauge\n"));
+        for (l, v) in samples {
+            out.push_str(&format!("{name}{} {v}\n", labels(l)));
+        }
+    };
+    let ok = snap.error.is_none() && snap.updated.is_some();
+    metric(
+        "caleon_up",
+        "1 when the last read of the thermostat succeeded.",
+        &[(vec![], if ok { 1.0 } else { 0.0 })],
+    );
+    if let Some(t) = snap.updated {
+        metric(
+            "caleon_last_read_timestamp_seconds",
+            "Unix time of the last successful read.",
+            &[(vec![], t as f64)],
+        );
+    }
+    let ids: Vec<String> = snap.rooms.iter().map(|r| r.id.to_string()).collect();
+    let (mut temp, mut hum, mut set, mut mode, mut heating, mut outputs) =
+        (vec![], vec![], vec![], vec![], vec![], vec![]);
+    for (r, id) in snap.rooms.iter().zip(&ids) {
+        let base: Labels = vec![("id", id), ("room", &r.name), ("type", &r.kind)];
+        if let Some(v) = parse_number(&r.temperature) {
+            temp.push((base.clone(), v));
+        }
+        if let Some(v) = parse_number(&r.humidity) {
+            hum.push((base.clone(), v));
+        }
+        if let Some(st) = &r.state {
+            if let Some(v) = parse_number(&st.tset) {
+                set.push((base.clone(), v));
+            }
+            let cur = st.mode.split(' ').next().unwrap_or("");
+            for m in ROOM_MODES {
+                let mut l = base.clone();
+                l.push(("mode", m));
+                mode.push((l, if m == cur { 1.0 } else { 0.0 }));
+            }
+            let on = r.outputs.iter().any(|o| o["on"].as_bool().unwrap_or(false));
+            heating.push((base.clone(), if on { 1.0 } else { 0.0 }));
+        }
+        for o in &r.outputs {
+            let mut l = base.clone();
+            l.push(("zone", o["zone"].as_str().unwrap_or("")));
+            l.push(("output", o["label"].as_str().unwrap_or("")));
+            outputs.push((
+                l,
+                if o["on"].as_bool().unwrap_or(false) {
+                    1.0
+                } else {
+                    0.0
+                },
+            ));
+        }
+    }
+    metric(
+        "caleon_room_temperature_celsius",
+        "Room temperature.",
+        &temp,
+    );
+    metric(
+        "caleon_room_humidity_percent",
+        "Room relative humidity, where the room has a humidity sensor.",
+        &hum,
+    );
+    metric(
+        "caleon_room_setpoint_celsius",
+        "Room setpoint; absent while the room is off.",
+        &set,
+    );
+    metric(
+        "caleon_room_mode",
+        "1 for the room's active mode (off, regular, eco, turbo), 0 for the others.",
+        &mode,
+    );
+    metric(
+        "caleon_room_heating",
+        "1 while a zone valve of the room is open.",
+        &heating,
+    );
+    metric(
+        "caleon_output_on",
+        "Zone valves of the central unit, by room.",
+        &outputs,
+    );
+    let status: Vec<(Labels, f64)> = snap
+        .status
+        .iter()
+        .filter_map(|m| {
+            m.value.map(|v| {
+                (
+                    vec![
+                        ("key", m.key.as_str()),
+                        ("group", m.group.as_str()),
+                        ("label", m.label.as_str()),
+                        ("unit", m.unit.as_str()),
+                    ],
+                    v,
+                )
+            })
+        })
+        .collect();
+    metric("caleon_status", "Every numeric value of the device status screens: sensors, outputs, circuit pump, boiler demand.", &status);
+    out
 }
 
 async fn refresh(State(app): State<AppState>) -> ApiResult {

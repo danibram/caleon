@@ -11,6 +11,14 @@ nube de Sorel. Pensado para correr en un NAS con Docker. Es Rust puro: no necesi
 La web tiene lo mismo que la app oficial (°CALEON 7.0.36) y algo más. Está pensada sobre todo para el móvil
 (barra de pestañas abajo, tema claro y oscuro, transiciones entre pantallas) y funciona igual en el ordenador:
 
+<p align="center">
+  <img src="docs/screenshots/home.png" width="180" alt="Inicio: habitaciones, modos y temperaturas de hoy">
+  <img src="docs/screenshots/room.png" width="180" alt="Una habitación: indicador, consigna y programa">
+  <img src="docs/screenshots/schedule.png" width="180" alt="Editor de horarios semanal">
+  <img src="docs/screenshots/charts.png" width="180" alt="Gráficas">
+</p>
+<p align="center"><img src="docs/screenshots/desktop.png" width="720" alt="Inicio en el ordenador"></p>
+
 - Inicio: habitaciones con temperatura, humedad, consigna (+/−), modo (Apagado, Normal, Eco, Confort, con la
   cuenta atrás de Confort) y control global de todas las habitaciones. Marca "Calentando" cuando el relé de la zona
   de esa habitación está activo.
@@ -160,6 +168,7 @@ que en el Mac el contenedor no encuentra el termostato. En un NAS Linux no pasa.
 | `POLL_SECONDS` | `60` | cada cuánto se lee el equipo y se guarda una muestra |
 | `BACKUP_HOURS` | `24` | cada cuánto se revisa la configuración; solo se guarda copia si cambió algo. `0` lo desactiva |
 | `BACKUP_KEEP` | `30` | copias automáticas que se conservan |
+| `PROMETHEUS` | `1` | `/metrics` en formato Prometheus; `0` lo desactiva |
 | `READ_ONLY` | (vacío) | con `1`, la web lo enseña todo pero el servidor rechaza cualquier cambio en el termostato (sirve para una pantalla de consulta o para hacer pruebas) |
 
 El termostato trata cada consulta remota como si alguien lo estuviera usando y mantiene la pantalla encendida.
@@ -182,6 +191,37 @@ ni Seleccionar red (lanza un escaneo WiFi). Tarda alrededor de un minuto.
 La restauración escribe nombres de habitación y horarios. Los ajustes del menú experto solo se comparan, porque el
 equipo no permite escribirlos directamente: se cambian paso a paso con +/− desde Experto, y la comparación te dice
 qué pantallas difieren.
+
+## Prometheus y Grafana
+
+El servidor expone su última lectura en `/metrics` en formato de texto de Prometheus (`PROMETHEUS=0` lo
+desactiva). Todo son gauges:
+
+| Métrica | Etiquetas | |
+|---|---|---|
+| `caleon_room_temperature_celsius` | `id`, `room`, `type` | temperatura de la habitación |
+| `caleon_room_humidity_percent` | `id`, `room`, `type` | habitaciones con sensor de humedad |
+| `caleon_room_setpoint_celsius` | `id`, `room`, `type` | no aparece mientras la habitación está apagada |
+| `caleon_room_mode` | `id`, `room`, `type`, `mode` | 1 en el modo activo (`off`, `regular`, `eco`, `turbo`), 0 en los demás |
+| `caleon_room_heating` | `id`, `room`, `type` | 1 mientras una válvula de zona de la habitación está abierta |
+| `caleon_output_on` | `id`, `room`, `type`, `zone`, `output` | cada válvula de zona |
+| `caleon_status` | `key`, `group`, `label`, `unit` | todos los valores numéricos de las pantallas de estado: sensores, bomba, demanda a la caldera |
+| `caleon_up`, `caleon_last_read_timestamp_seconds` | | si la última lectura funcionó, y cuándo |
+
+El equipo se lee una vez por minuto (`POLL_SECONDS`), así que un intervalo de scrape más corto solo repite
+valores:
+
+```yaml
+scrape_configs:
+  - job_name: caleon
+    scrape_interval: 60s
+    static_configs:
+      - targets: ["<ip-del-nas>:8088"]
+```
+
+`contrib/grafana/caleon.json` es un panel para importar en Grafana: temperatura y objetivo por habitación,
+humedad, el modo de cada habitación en el tiempo, cuándo ha calentado cada una, bomba, válvulas y demanda a la
+caldera, y los sensores del equipo. Al importarlo pide tu fuente de datos de Prometheus.
 
 ## Estructura del repositorio
 

@@ -28,6 +28,8 @@ pub struct App {
     pub backup_hours: u64,
     /// READ_ONLY=1: refuse every write to the thermostat (for reviews and demos).
     pub read_only: bool,
+    /// PROMETHEUS=0 turns off the /metrics exposition.
+    pub prometheus: bool,
     pub schema: Arc<Schema>,
     /// Current connection settings and where the thermostat was found.
     pub conn: RwLock<(Settings, Found)>,
