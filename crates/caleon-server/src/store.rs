@@ -37,7 +37,10 @@ impl Store {
                tset REAL, mode TEXT, PRIMARY KEY (ts, room));
              CREATE TABLE IF NOT EXISTS metrics (
                ts INTEGER NOT NULL, key TEXT NOT NULL, value REAL NOT NULL, PRIMARY KEY (ts, key));
-             CREATE INDEX IF NOT EXISTS metrics_key_ts ON metrics(key, ts);",
+             CREATE INDEX IF NOT EXISTS metrics_key_ts ON metrics(key, ts);
+             CREATE TABLE IF NOT EXISTS mode_setpoints (
+               room INTEGER NOT NULL, mode TEXT NOT NULL, tset REAL NOT NULL, ts INTEGER NOT NULL,
+               PRIMARY KEY (room, mode));",
         )?;
         let mut temps = BTreeMap::new();
         {
@@ -55,6 +58,21 @@ impl Store {
             for row in rows {
                 let (room, mode, tset) = row?;
                 temps.insert((room as u16, base_mode(&mode).to_string()), tset);
+            }
+        }
+        {
+            // setpoints read on purpose (App::set_mode_temps) win over what the samples suggest
+            let mut stmt = db.prepare("SELECT room, mode, tset FROM mode_setpoints")?;
+            let rows = stmt.query_map([], |r| {
+                Ok((
+                    r.get::<_, i64>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, f64>(2)?,
+                ))
+            })?;
+            for row in rows {
+                let (room, mode, tset) = row?;
+                temps.insert((room as u16, mode), tset);
             }
         }
         Ok(Store {
@@ -95,6 +113,21 @@ impl Store {
         }
         tx.commit()?;
         Ok(())
+    }
+
+    /// Setpoint of a mode read by visiting it; kept across restarts.
+    pub fn set_mode_temp(&self, room: u16, mode: &str, tset: f64) {
+        self.mode_temps
+            .lock()
+            .unwrap()
+            .insert((room, mode.to_string()), tset);
+        let db = self.db.lock().unwrap();
+        if let Err(e) = db.execute(
+            "INSERT OR REPLACE INTO mode_setpoints VALUES (?1,?2,?3,?4)",
+            params![room, mode, tset, crate::app::now()],
+        ) {
+            tracing::warn!("mode_setpoints: {e}");
+        }
     }
 
     /// Last setpoint seen for each room and mode: {"0": {"regular": 21.5, "turbo": 23.5}}.

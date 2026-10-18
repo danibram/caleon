@@ -321,6 +321,86 @@ impl App {
         }
     }
 
+    /// Changes the setpoint of one or more modes without leaving the room in another mode: the
+    /// room visits each mode, moves that mode's setpoint in half-degree steps and returns to the
+    /// mode it had. With `read_all` it also visits the modes not in `targets`, to learn their
+    /// setpoints. Blocking. Returns the setpoints seen.
+    pub fn set_mode_temps(
+        &self,
+        id: u16,
+        targets: &[(String, f64)],
+        read_all: bool,
+    ) -> Result<Map<String, Value>> {
+        if id == SYSTEM_ROOM {
+            bail!("las temperaturas de los modos se cambian habitación por habitación");
+        }
+        let cur = self.device.room_state(id, &RoomChange::default())?;
+        if !cur.vacation.is_empty() {
+            bail!("la habitación está en vacaciones; termínalas antes");
+        }
+        let orig = match cur.mode.split(' ').next().unwrap_or("") {
+            "" => "regular".to_string(),
+            m => m.to_string(),
+        };
+        let mut modes: Vec<(String, Option<f64>)> =
+            targets.iter().map(|(m, t)| (m.clone(), Some(*t))).collect();
+        if read_all {
+            for m in ["regular", "eco", "turbo"] {
+                if !modes.iter().any(|(k, _)| k == m) {
+                    modes.push((m.to_string(), None));
+                }
+            }
+        }
+        let mut seen = Map::new();
+        let result = (|| -> Result<()> {
+            for (mode, target) in &modes {
+                let mut st = self.device.room_state(
+                    id,
+                    &RoomChange {
+                        mode: Some(mode.clone()),
+                        ..Default::default()
+                    },
+                )?;
+                let mut now = parse_number(&st.tset)
+                    .ok_or_else(|| anyhow!("el modo {mode} no devuelve consigna"))?;
+                if let Some(target) = target {
+                    // one relative step at a time, reading the answer back: a lost packet cannot overshoot
+                    for _ in 0..60 {
+                        let n = ((target - now) * 2.0).round() as i32;
+                        if n == 0 {
+                            break;
+                        }
+                        st = self.device.room_state(
+                            id,
+                            &RoomChange {
+                                tdelta: Some(n.signum() as i8),
+                                ..Default::default()
+                            },
+                        )?;
+                        now = parse_number(&st.tset)
+                            .ok_or_else(|| anyhow!("respuesta sin consigna"))?;
+                    }
+                }
+                seen.insert(mode.clone(), json!(now));
+                self.store.set_mode_temp(id, mode, now);
+            }
+            Ok(())
+        })();
+        // back to the mode the room had, whatever happened in between
+        match self.device.room_state(
+            id,
+            &RoomChange {
+                mode: Some(orig.clone()),
+                ..Default::default()
+            },
+        ) {
+            Ok(st) => self.apply_room_state(id, st),
+            Err(e) => tracing::warn!("room {id}: could not return to {orig}: {e}"),
+        }
+        result?;
+        Ok(seen)
+    }
+
     // ---- crawler
 
     /// Walks the device menu read-only. It only enters "goto:" entries of string lists and dynamic

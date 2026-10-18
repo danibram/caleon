@@ -23,7 +23,9 @@ text is in Spanish.
 - Home: rooms with temperature, humidity, setpoint (+/−), mode (Off, Normal, Eco, Comfort, with the Comfort
   countdown) and the global control for all rooms. Shows "Heating" when the relay of that room's zone is on.
 - Room: schedules, holidays (start and end), season change when the device allows it, name, notices, expert
-  menu, status and its history.
+  menu, status and its history. The setpoint of each mode (Normal, Eco, Comfort) is edited in one place: the
+  thermostat only keeps one setpoint per mode and only moves the active one, so the server visits each mode
+  for a moment and comes back to the mode the room had.
 - Schedules: all 7 days in half-hour slots for heating and cooling, painted with the mouse or a finger, plus
   "copy to next day / Monday-Friday / Saturday-Sunday / Monday-Sunday".
 - Expert: the device's whole menu (language, date and time, devices, rooms, °Cbox functions, zones, WiFi,

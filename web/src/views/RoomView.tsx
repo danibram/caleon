@@ -8,6 +8,7 @@ import { Banner } from '../components/Banner.tsx'
 import { Band } from '../components/Band.tsx'
 import { Gauge } from '../components/Gauge.tsx'
 import { Icon } from '../components/Icon.tsx'
+import { ModeTemps } from '../components/ModeTemps.tsx'
 import { RoomControls } from '../components/RoomControls.tsx'
 import { RoomIcon } from '../components/RoomIcon.tsx'
 import { useApp } from '../context/AppContext.tsx'
@@ -254,6 +255,7 @@ export function RoomView() {
           )}
         </div>
         <div className="room-side">
+          {!isSys ? <ModeTemps room={r} S={S} /> : null}
           <h2 className="group-title">Programación</h2>
           <ActionRow items={actions} />
           {!isSys && S.features?.room_renaming ? (

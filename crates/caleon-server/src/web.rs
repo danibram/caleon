@@ -99,6 +99,7 @@ pub fn router(app: AppState) -> Router {
         .route("/api/metrics", get(metrics))
         .route("/api/log", get(message_log))
         .route("/api/rooms/:id", post(room_change))
+        .route("/api/rooms/:id/modes", post(room_modes))
         .route("/api/rooms/:id/timer", get(timer_get))
         .route("/api/rooms/:id/timer/:day", put(timer_put))
         .route("/api/rooms/:id/timer/:day/copy", post(timer_copy))
@@ -523,6 +524,49 @@ async fn room_change(
     let mut v = serde_json::to_value(st).unwrap();
     v["state"] = state(State(app)).await.0;
     Ok(Json(v))
+}
+
+#[derive(Deserialize)]
+struct ModeTempsBody {
+    regular: Option<f64>,
+    eco: Option<f64>,
+    turbo: Option<f64>,
+    /// Also visit the modes not given, to learn their setpoints.
+    #[serde(default)]
+    read: bool,
+}
+
+/// Body: `{"regular": 21.5, "eco": 18, "turbo": 23, "read": true}`, any subset. The room visits each
+/// mode briefly and comes back to the mode it had.
+async fn room_modes(
+    State(app): State<AppState>,
+    Path(id): Path<u16>,
+    Json(b): Json<ModeTempsBody>,
+) -> ApiResult {
+    guard_write(&app)?;
+    check_room(&app, id)?;
+    if id == SYSTEM_ROOM {
+        return Err(bad("mode temperatures are set per room"));
+    }
+    let mut targets = Vec::new();
+    for (mode, v) in [("regular", b.regular), ("eco", b.eco), ("turbo", b.turbo)] {
+        if let Some(v) = v {
+            if !(5.0..=30.0).contains(&v) || (v * 2.0).fract() != 0.0 {
+                return Err(bad("temperatures go from 5 to 30 in half-degree steps"));
+            }
+            targets.push((mode.to_string(), v));
+        }
+    }
+    if targets.is_empty() && !b.read {
+        return Err(bad("nothing to change"));
+    }
+    tracing::info!("room {id} mode temps {targets:?} read={}", b.read);
+    let read = b.read;
+    let seen = blocking(&app, move |a| a.set_mode_temps(id, &targets, read)).await?;
+    reread_later(&app, true);
+    Ok(Json(
+        json!({"temps": seen, "mode_temps": app.store.mode_temps()}),
+    ))
 }
 
 #[derive(Deserialize)]

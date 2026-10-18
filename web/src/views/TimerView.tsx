@@ -47,6 +47,7 @@ export function TimerView() {
   const draftAt = useRef(0)
 
   const painting = useRef(false)
+  const hold = useRef<{ timer: ReturnType<typeof setTimeout>; i: number; x: number; y: number } | null>(null)
   const lastI = useRef<number | null>(null)
   const pending = useRef(false)
   const dayEditRef = useRef<HTMLDivElement>(null)
@@ -157,22 +158,66 @@ export function TimerView() {
     paintCells(cells)
   }
 
+  // On touch a swipe scrolls the page; painting a run needs a short hold first, so a finger can
+  // move through the grid without changing anything. A tap still paints one half hour.
+  const HOLD_MS = 220
+
+  const startPainting = (pointerId: number, i: number) => {
+    if (!dayEditRef.current) return
+    painting.current = true
+    try {
+      dayEditRef.current.setPointerCapture(pointerId)
+    } catch {
+      // the pointer is gone already (a very short touch); painting still works for this event
+    }
+    paintAt(i)
+    if (navigator.vibrate) navigator.vibrate(8)
+  }
+
+  const cancelHold = () => {
+    if (hold.current) clearTimeout(hold.current.timer)
+    hold.current = null
+  }
+
   const onPointerDown = (ev: ReactPointerEvent) => {
     const i = ev.target instanceof Element ? cellIndex(ev.target) : null
     if (i === null || !dayEditRef.current) return
-    painting.current = true
-    dayEditRef.current.setPointerCapture(ev.pointerId)
-    paintAt(i)
-    ev.preventDefault()
+    if (ev.pointerType === 'mouse') {
+      startPainting(ev.pointerId, i)
+      ev.preventDefault()
+      return
+    }
+    cancelHold()
+    const { pointerId, clientX, clientY } = ev
+    hold.current = {
+      i,
+      x: clientX,
+      y: clientY,
+      timer: setTimeout(() => {
+        hold.current = null
+        startPainting(pointerId, i)
+      }, HOLD_MS),
+    }
   }
 
   const onPointerMove = (ev: ReactPointerEvent) => {
+    if (hold.current && Math.hypot(ev.clientX - hold.current.x, ev.clientY - hold.current.y) > 8) {
+      cancelHold() // the finger is scrolling
+      return
+    }
     if (!painting.current) return
     const i = cellIndex(document.elementFromPoint(ev.clientX, ev.clientY))
     if (i !== null) paintAt(i)
   }
 
-  const endPaint = () => {
+  const endPaint = (ev?: ReactPointerEvent) => {
+    if (hold.current && ev?.type === 'pointerup') {
+      const { i } = hold.current
+      cancelHold()
+      paintAt(i) // a tap
+      lastI.current = null
+    }
+    cancelHold()
     painting.current = false
     lastI.current = null
     if (pending.current && daysRef.current && original) {
@@ -384,7 +429,9 @@ export function TimerView() {
                 <div className="hint spread">
                   <span className="muted small">
                     Elige un modo y{' '}
-                    {coarse ? 'toca o arrastra' : 'haz clic o arrastra'} sobre las medias horas.
+                    {coarse
+                      ? 'toca una media hora para pintarla; mantén pulsado y arrastra para pintar varias. Desliza para moverte por el día.'
+                      : 'haz clic o arrastra sobre las medias horas.'}
                   </span>
                   {day === today ? (
                     <button
@@ -420,6 +467,10 @@ export function TimerView() {
             onPointerMove={onPointerMove}
             onPointerUp={endPaint}
             onPointerCancel={endPaint}
+            onTouchMove={(ev) => {
+              // once a hold started a run, keep the browser from scrolling under the finger
+              if (painting.current && ev.cancelable) ev.preventDefault()
+            }}
           >
             {Array.from({ length: 24 }, (_, h) => (
               <div className="hrow" key={h}>

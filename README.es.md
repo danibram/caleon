@@ -23,7 +23,9 @@ La web tiene lo mismo que la app oficial (°CALEON 7.0.36) y algo más. Está pe
   cuenta atrás de Confort) y control global de todas las habitaciones. Marca "Calentando" cuando el relé de la zona
   de esa habitación está activo.
 - Habitación: horarios, vacaciones (activar y terminar), cambio de estación si el equipo lo permite, nombre,
-  avisos, experto, estado y su histórico.
+  avisos, experto, estado y su histórico. La temperatura de cada modo (Normal, Eco, Confort) se edita en un
+  solo sitio: el termostato guarda una consigna por modo y solo mueve la del modo activo, así que el servidor
+  pasa un momento por cada modo y vuelve al que tenía la habitación.
 - Horarios: los 7 días en franjas de media hora para calefacción y refrigeración, pintando con el ratón o el dedo,
   y "copiar a día siguiente / lunes-viernes / sábado-domingo / lunes-domingo".
 - Experto: el menú completo del equipo (idioma, fecha y hora, dispositivos, habitaciones, funciones °Cbox, zonas,
