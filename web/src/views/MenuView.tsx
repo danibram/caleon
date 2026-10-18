@@ -285,7 +285,8 @@ function MenuScreen({ root }: { root: string }) {
   useEffect(() => {
     const refreshDetail = async () => {
       const cur = menuCurRef.current
-      if (!cur || cur.menu.type === 'timer') return
+      // only screens with live readings change on their own; lists and forms do not
+      if (!cur || !['information', 'dynamic list', 'dynamic list tiled'].includes(cur.menu.type)) return
       if (document.querySelector('dialog[open]')) return
       if (
         document.querySelector(
@@ -304,7 +305,7 @@ function MenuScreen({ root }: { root: string }) {
         /* ignore */
       }
     }
-    const id = window.setInterval(refreshDetail, 10000)
+    const id = window.setInterval(refreshDetail, 30000)
     return () => clearInterval(id)
   }, [api])
 

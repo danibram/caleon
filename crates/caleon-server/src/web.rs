@@ -40,6 +40,30 @@ fn guard_write(app: &App) -> Result<(), ApiError> {
     }
 }
 
+fn mode_label(m: &str) -> &str {
+    match m {
+        "off" => "Apagado",
+        "regular" => "Normal",
+        "eco" => "Eco",
+        "turbo" => "Confort",
+        other => other,
+    }
+}
+
+fn fmt_temp(v: f64) -> String {
+    format!("{v:.1} °C").replace('.', ",")
+}
+
+fn timer_kind(id: u16, t: u8) -> &'static str {
+    if id == SYSTEM_ROOM {
+        " (agua caliente)"
+    } else if t == 1 {
+        " (refrigeración)"
+    } else {
+        ""
+    }
+}
+
 /// Menu actions that only move between screens (allowed in read-only mode).
 fn is_navigation(action: &str) -> bool {
     action.is_empty()
@@ -59,18 +83,31 @@ static REREAD_GEN: AtomicU64 = AtomicU64::new(0);
 /// After a change, reread everything a few more times in the background, because valves, pump and
 /// the other rooms react seconds later. Writes in a row (a week of schedule, several taps on +)
 /// share one series of rereads. The poller keeps its own one-minute rhythm.
-pub(crate) fn reread_later(app: &AppState, now: bool) {
+/// With `room`, only that room is reread (four calls instead of ten), right away and ten seconds
+/// later, when the valves have reacted. Without it, everything is reread at 5 and 15 s.
+pub(crate) fn reread_later(app: &AppState, room: Option<u16>, now: bool) {
     let gen = REREAD_GEN.fetch_add(1, Ordering::SeqCst) + 1;
     let app = app.clone();
     tokio::spawn(async move {
-        let first = if now { 0 } else { 5 };
-        for secs in [first, 10, 15] {
-            tokio::time::sleep(std::time::Duration::from_secs(secs)).await;
+        let waits: &[u64] = if room.is_some() {
+            &[0, 10]
+        } else if now {
+            &[0, 15]
+        } else {
+            &[5, 15]
+        };
+        for secs in waits {
+            tokio::time::sleep(std::time::Duration::from_secs(*secs)).await;
             if REREAD_GEN.load(Ordering::SeqCst) != gen {
                 return;
             }
             let a = app.clone();
-            if let Ok(Err(e)) = tokio::task::spawn_blocking(move || a.refresh(false)).await {
+            let r = tokio::task::spawn_blocking(move || match room {
+                Some(id) => a.refresh_room(id),
+                None => a.refresh(false),
+            })
+            .await;
+            if let Ok(Err(e)) = r {
                 tracing::debug!("reread after change: {e}");
             }
         }
@@ -98,6 +135,7 @@ pub fn router(app: AppState) -> Router {
         .route("/api/history", get(history))
         .route("/api/metrics", get(metrics))
         .route("/api/log", get(message_log))
+        .route("/api/events", get(events))
         .route("/api/rooms/:id", post(room_change))
         .route("/api/rooms/:id/modes", post(room_modes))
         .route("/api/rooms/:id/timer", get(timer_get))
@@ -229,7 +267,9 @@ async fn icon(Path(name): Path<String>, Query(q): Query<HashMap<String, String>>
 }
 
 async fn state(State(app): State<AppState>) -> Json<Value> {
+    let (calls, last_minute) = app.device.calls();
     let mut v = serde_json::to_value(&*app.snapshot.read().unwrap()).unwrap();
+    v["device_calls"] = json!({"total": calls, "last_minute": last_minute});
     v["crawling"] = json!(app.crawling.load(Ordering::SeqCst));
     v["crawl_done"] = json!(app.crawl_done.load(Ordering::SeqCst));
     v["crawl_expected"] = json!(app.crawl_expected.load(Ordering::SeqCst));
@@ -251,7 +291,7 @@ async fn prometheus(State(app): State<AppState>) -> Response {
             header::CONTENT_TYPE,
             "text/plain; version=0.0.4; charset=utf-8",
         )],
-        prometheus_text(&snap),
+        prometheus_text(&snap, app.device.calls()),
     )
         .into_response()
 }
@@ -268,7 +308,7 @@ fn device_of<'a>(snap: &'a crate::app::Snapshot, label: &str) -> &'a str {
     }
 }
 
-fn prometheus_text(snap: &crate::app::Snapshot) -> String {
+fn prometheus_text(snap: &crate::app::Snapshot, device_calls: (u64, usize)) -> String {
     type Labels<'a> = Vec<(&'a str, &'a str)>;
     fn esc(s: &str) -> String {
         s.replace('\\', "\\\\")
@@ -398,6 +438,10 @@ fn prometheus_text(snap: &crate::app::Snapshot) -> String {
         })
         .collect();
     metric("caleon_status", "Every numeric value of the device status screens: sensors, outputs, circuit pump, boiler demand.", &status);
+    let (calls, last_minute) = device_calls;
+    out.push_str(&format!(
+        "# HELP caleon_device_calls_total Queries sent to the thermostat since start.\n# TYPE caleon_device_calls_total counter\ncaleon_device_calls_total {calls}\n# HELP caleon_device_calls_per_minute Queries sent to the thermostat in the last minute.\n# TYPE caleon_device_calls_per_minute gauge\ncaleon_device_calls_per_minute {last_minute}\n"
+    ));
     out
 }
 
@@ -423,6 +467,21 @@ async fn metrics(State(app): State<AppState>, Query(q): Query<HoursQuery>) -> Ap
     Ok(Json(
         blocking(&app, move |a| a.store.metric_history(since, 600)).await?,
     ))
+}
+
+/// What the server did, newest first: changes sent to the thermostat, backups, outages.
+async fn events(
+    State(app): State<AppState>,
+    Query(q): Query<HashMap<String, String>>,
+) -> ApiResult {
+    let limit = q
+        .get("limit")
+        .and_then(|l| l.parse().ok())
+        .unwrap_or(300usize)
+        .min(2000);
+    Ok(Json(json!(
+        blocking(&app, move |a| a.store.events(limit)).await?
+    )))
 }
 
 async fn message_log(State(app): State<AppState>) -> ApiResult {
@@ -520,7 +579,38 @@ async fn room_change(
         Ok(st)
     })
     .await?;
-    reread_later(&app, id != SYSTEM_ROOM);
+    let what = if let Some(d) = body.get("tdelta").and_then(Value::as_i64) {
+        format!(
+            "Consigna {} → {}",
+            if d > 0 { "+0,5" } else { "−0,5" },
+            st.tset.replace('.', ",")
+        )
+    } else if let Some(m) = body.get("mode").and_then(Value::as_str) {
+        format!("Modo {}", mode_label(m))
+    } else if let Some(n) = body.get("name").and_then(Value::as_str) {
+        format!("Nombre cambiado a «{}»", n.trim())
+    } else if let Some(s) = body.get("season").and_then(Value::as_str) {
+        format!(
+            "Estación: {}",
+            if s == "cooling" {
+                "refrigeración"
+            } else {
+                "calefacción"
+            }
+        )
+    } else if body.get("vacation").map(Value::is_null).unwrap_or(false) {
+        "Vacaciones terminadas".to_string()
+    } else if let Some(v) = body.get("vacation").and_then(Value::as_str) {
+        format!("Vacaciones hasta {v}")
+    } else {
+        "Cambio".to_string()
+    };
+    if id == SYSTEM_ROOM {
+        app.log("web", None, format!("Toda la casa: {what}"));
+    } else {
+        app.log("web", Some(id), what);
+    }
+    reread_later(&app, (id != SYSTEM_ROOM).then_some(id), true);
     let mut v = serde_json::to_value(st).unwrap();
     v["state"] = state(State(app)).await.0;
     Ok(Json(v))
@@ -562,8 +652,32 @@ async fn room_modes(
     }
     tracing::info!("room {id} mode temps {targets:?} read={}", b.read);
     let read = b.read;
+    let said: Vec<String> = targets
+        .iter()
+        .map(|(m, v)| format!("{} {}", mode_label(m), fmt_temp(*v)))
+        .collect();
     let seen = blocking(&app, move |a| a.set_mode_temps(id, &targets, read)).await?;
-    reread_later(&app, true);
+    if said.is_empty() {
+        let got: Vec<String> = seen
+            .iter()
+            .filter_map(|(m, v)| {
+                v.as_f64()
+                    .map(|v| format!("{} {}", mode_label(m), fmt_temp(v)))
+            })
+            .collect();
+        app.log(
+            "web",
+            Some(id),
+            format!("Temperaturas de los modos leídas: {}", got.join(" · ")),
+        );
+    } else {
+        app.log(
+            "web",
+            Some(id),
+            format!("Temperaturas de los modos: {}", said.join(" · ")),
+        );
+    }
+    reread_later(&app, Some(id), true);
     Ok(Json(
         json!({"temps": seen, "mode_temps": app.store.mode_temps()}),
     ))
@@ -620,8 +734,17 @@ async fn timer_put(
     let t = timer_type(id, &q);
     tracing::info!("room {id} timer type {t} day {day} set");
     let v = blocking(&app, move |a| a.device.room_timer(id, t, Some((day, bf)))).await?;
+    app.log(
+        "web",
+        (id != SYSTEM_ROOM).then_some(id),
+        format!(
+            "Horario del {} guardado{}",
+            crate::app::DAYS[day as usize],
+            timer_kind(id, t)
+        ),
+    );
     app.snapshot.write().unwrap().weeks_at = None;
-    reread_later(&app, false);
+    reread_later(&app, None, false);
     Ok(Json(week_json(id, &v)))
 }
 
@@ -650,8 +773,22 @@ async fn timer_copy(
         a.device.room_timer_copy(id, t, day, body.mask)
     })
     .await?;
+    let to: Vec<&str> = (0..7)
+        .filter(|d| body.mask >> d & 1 == 1)
+        .map(|d| crate::app::DAYS[d])
+        .collect();
+    app.log(
+        "web",
+        (id != SYSTEM_ROOM).then_some(id),
+        format!(
+            "Horario del {} copiado a {}{}",
+            crate::app::DAYS[day as usize],
+            to.join(", "),
+            timer_kind(id, t)
+        ),
+    );
     app.snapshot.write().unwrap().weeks_at = None;
-    reread_later(&app, false);
+    reread_later(&app, None, false);
     Ok(Json(week_json(id, &v)))
 }
 
@@ -674,6 +811,7 @@ async fn menu_action(State(app): State<AppState>, Json(b): Json<MenuActionBody>)
     }
     tracing::info!("menu action {:?} on {:?}", b.action, b.id);
     let writes = !is_navigation(&b.action);
+    let b_action = b.action.clone();
     let v = blocking(&app, move |a| {
         let ext = a.extended();
         let menu = a.device.menu_action(ext, &b.id, &b.action)?;
@@ -688,7 +826,16 @@ async fn menu_action(State(app): State<AppState>, Json(b): Json<MenuActionBody>)
     })
     .await?;
     if writes {
-        reread_later(&app, false);
+        app.log(
+            "web",
+            None,
+            format!(
+                "Experto: {} en «{}»",
+                b_action,
+                v["menu"]["title"].as_str().unwrap_or("?")
+            ),
+        );
+        reread_later(&app, None, false);
     }
     Ok(Json(v))
 }
@@ -718,8 +865,10 @@ async fn menu_set(State(app): State<AppState>, Json(b): Json<Value>) -> ApiResul
         .ok_or_else(|| bad("missing type"))?
         .to_string();
     tracing::info!("menu set {kind} {id}: {b}");
+    let said = format!("Experto: {kind} guardado en {id}");
     let v = blocking(&app, move |a| a.device.menu_set(&kind, &id, &b)).await?;
-    reread_later(&app, false);
+    app.log("web", None, said);
+    reread_later(&app, None, false);
     Ok(Json(v))
 }
 
@@ -735,6 +884,11 @@ async fn backup_create(State(app): State<AppState>) -> ApiResult {
         ));
     }
     let name = blocking(&app, |a| a.create_backup("manual", false)).await?;
+    app.log(
+        "web",
+        None,
+        format!("Copia manual guardada ({})", name.as_deref().unwrap_or("?")),
+    );
     Ok(Json(json!({"name": name})))
 }
 
@@ -761,11 +915,13 @@ async fn backup_get(
 
 async fn backup_delete(State(app): State<AppState>, Path(name): Path<String>) -> ApiResult {
     guard_write(&app)?;
+    let said = format!("Copia {name} borrada");
     blocking(&app, move |a| {
         a.read_backup(&name)?;
         Ok(std::fs::remove_file(a.backups_dir().join(&name))?)
     })
     .await?;
+    app.log("web", None, said);
     Ok(Json(json!({"ok": true})))
 }
 
@@ -816,6 +972,7 @@ async fn backup_restore(
         b.timers
     );
     let apply = b.apply;
+    let backup_name = name.clone();
     let v = blocking(&app, move |a| {
         let backup = match b.backup {
             Some(v) => v,
@@ -825,8 +982,17 @@ async fn backup_restore(
     })
     .await?;
     if apply {
+        app.log(
+            "web",
+            None,
+            format!(
+                "Copia {} restaurada: {} cambios",
+                backup_name,
+                v["changes"].as_array().map_or(0, Vec::len)
+            ),
+        );
         app.snapshot.write().unwrap().weeks_at = None;
-        reread_later(&app, false);
+        reread_later(&app, None, false);
     }
     Ok(Json(v))
 }
@@ -890,6 +1056,11 @@ async fn settings_set(State(app): State<AppState>, Json(b): Json<SettingsBody>) 
         Ok(())
     })
     .await?;
+    app.log(
+        "web",
+        None,
+        format!("Modo de conexión: {}", app.device.transport().kind()),
+    );
     Ok(Json(settings_json(&app)))
 }
 

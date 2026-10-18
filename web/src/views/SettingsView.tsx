@@ -1,3 +1,4 @@
+import { roomTitle, zoneRooms } from '../lib/rooms.ts'
 import { useCallback, useEffect, useState } from 'react'
 import { ActionRow } from '../components/ActionRow.tsx'
 import { useApp } from '../context/AppContext.tsx'
@@ -85,6 +86,12 @@ export function SettingsView() {
             {ip} · {TRANSPORTS[cfg.active]?.[0] || cfg.active} · firmware del{' '}
             {fmtFirmware(S.firmware)}
           </div>
+          {S.device_calls ? (
+            <div className="muted small">
+              {S.device_calls.last_minute} consultas al termostato en el último minuto ·{' '}
+              {S.device_calls.total} desde que arrancó el servidor
+            </div>
+          ) : null}
         </div>
       </div>
       <ActionRow
@@ -105,6 +112,33 @@ export function SettingsView() {
           },
         ]}
       />
+      <h2 className="group-title">Equipo</h2>
+      <div className="card">
+        <div className="kv">
+          <span>Termostato</span>
+          <b>{S.device.split('.')[0]}</b>
+        </div>
+        <div className="kv">
+          <span>Firmware</span>
+          <b>{fmtFirmware(S.firmware)}</b>
+        </div>
+        {Object.entries(zoneRooms(S)).map(([z, r]) => (
+          <div className="kv" key={z}>
+            <span>Zona {z}</span>
+            <b>{roomTitle(r)}</b>
+          </div>
+        ))}
+        <details className="adv" style={{ marginTop: 10 }}>
+          <summary>Detalles técnicos</summary>
+          <div className="small muted" style={{ marginTop: 10 }}>
+            Nabto {S.nabto || '—'} · funciones:{' '}
+            {Object.entries(S.features || {})
+              .filter(([, v]) => v)
+              .map(([k]) => k)
+              .join(', ')}
+          </div>
+        </details>
+      </div>
       <h2 className="group-title">Apariencia</h2>
       <div className="card">
         <div className="spread">

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Room, Snapshot } from '../api/types.ts'
 import { useApp } from '../context/AppContext.tsx'
 import { useRoomControlGuard } from '../hooks/useRoomChange.ts'
@@ -12,6 +12,9 @@ type Draft = Record<EditableMode, number | null>
 
 const MIN = 5
 const MAX = 30
+
+/** Rooms whose unknown setpoints were already asked for in this session: one visit per room. */
+const readOnce = new Set<number>()
 
 function hasModeTemps(v: unknown): v is { mode_temps: Snapshot['mode_temps'] } {
   return typeof v === 'object' && v !== null && 'mode_temps' in v
@@ -35,6 +38,7 @@ export function ModeTemps({ room, S }: { room: Room; S: Snapshot }) {
   const unknown = EDITABLE.filter((m) => current()[m] === null)
   const readOnly = !!S.read_only
   const disabled = busy !== null || readOnly || !!room.vacation
+  const needsRead = unknown.length > 0 && !readOnly && !room.vacation && !staleData && !readOnce.has(room.id)
 
   const step = (mode: EditableMode, delta: number) => {
     if (staleData) {
@@ -60,6 +64,14 @@ export function ModeTemps({ room, S }: { room: Room; S: Snapshot }) {
       setBusy(null)
     }
   }
+
+  // opening the room reads the setpoints the thermostat has not shown yet (a 0.3 s visit of each mode)
+  useEffect(() => {
+    if (!needsRead) return
+    readOnce.add(room.id)
+    void send({ read: true }, 'read')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsRead, room.id])
 
   return (
     <>
@@ -98,7 +110,7 @@ export function ModeTemps({ room, S }: { room: Room; S: Snapshot }) {
             : busy === 'save'
               ? 'Cambiando. El termostato pasa un momento por cada modo y vuelve al que tenía.'
               : busy === 'read'
-                ? 'Leyendo. El termostato pasa un momento por cada modo y vuelve al que tenía.'
+                ? 'Leyendo las temperaturas que faltan. El termostato pasa un momento por cada modo y vuelve al que tenía.'
                 : 'Se cambian sin tocar el modo ni el horario de la habitación.'}
         </p>
         <div className="actions">
@@ -116,9 +128,9 @@ export function ModeTemps({ room, S }: { room: Room; S: Snapshot }) {
                 {busy === 'save' ? 'Guardando…' : 'Guardar'}
               </button>
             </>
-          ) : unknown.length ? (
+          ) : unknown.length && !busy && readOnce.has(room.id) ? (
             <button type="button" className="btn" disabled={disabled} onClick={() => void send({ read: true }, 'read')}>
-              {busy === 'read' ? 'Leyendo…' : 'Leer del termostato'}
+              Volver a leer
             </button>
           ) : null}
         </div>

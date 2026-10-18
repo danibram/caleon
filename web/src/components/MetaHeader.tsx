@@ -31,6 +31,7 @@ export function MetaHeader() {
 
   let text: string
   if (S.crawling) text = 'Leyendo la configuración…'
+  else if (!S.updated) text = 'Esperando la primera lectura…'
   else if (S.error) text = 'El termostato no responde'
   else if (age > 120) text = `Datos de ${ago(age)}`
   else text = `Actualizado ${t}`

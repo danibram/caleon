@@ -86,15 +86,31 @@ pub async fn run() -> Result<()> {
         tokio::spawn(async move {
             loop {
                 let a = app.clone();
+                let was_down = app.snapshot.read().unwrap().error.is_some();
                 let r = tokio::task::spawn_blocking(move || a.refresh(history)).await;
-                if let Ok(Err(e)) | Err(e) = r.map_err(anyhow::Error::from) {
-                    tracing::warn!("refresh failed: {e:#}");
-                    app.snapshot.write().unwrap().error = Some(format!("{e:#}"));
+                match r.map_err(anyhow::Error::from) {
+                    Ok(Err(e)) | Err(e) => {
+                        tracing::warn!("refresh failed: {e:#}");
+                        app.snapshot.write().unwrap().error = Some(format!("{e:#}"));
+                        if !was_down {
+                            app.log("server", None, format!("El termostato no responde: {e:#}"));
+                        }
+                    }
+                    Ok(Ok(())) if was_down => {
+                        app.log("server", None, "El termostato vuelve a responder")
+                    }
+                    Ok(Ok(())) => {}
                 }
                 tokio::time::sleep(Duration::from_secs(poll)).await;
             }
         });
     }
+
+    app.log(
+        "server",
+        None,
+        format!("Servidor iniciado · v{}", env!("CARGO_PKG_VERSION")),
+    );
 
     if let Some(cfg) = mqtt {
         tracing::info!(
@@ -120,9 +136,13 @@ pub async fn run() -> Result<()> {
                 })
                 .await
                 {
-                    Ok(Ok(Some(name))) => tracing::info!("automatic backup {name}"),
-                    Ok(Ok(None)) => {}
-                    Ok(Err(e)) => tracing::warn!("automatic backup failed: {e:#}"),
+                    Ok(Ok(Some(name))) => {
+                        app.log("auto", None, format!("Copia automática guardada ({name})"))
+                    }
+                    Ok(Ok(None)) => app.log("auto", None, "Copia automática: sin cambios"),
+                    Ok(Err(e)) => {
+                        app.log("auto", None, format!("La copia automática falló: {e:#}"))
+                    }
                     Err(e) => tracing::warn!("automatic backup panicked: {e}"),
                 }
                 tokio::time::sleep(Duration::from_secs(backup_hours * 3600)).await;

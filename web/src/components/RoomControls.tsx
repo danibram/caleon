@@ -45,7 +45,7 @@ export function RoomControls({ room, S, compact = false }: RoomControlsProps) {
             −
           </button>
           <div>
-            <div className="label">{mode === 'off' ? 'Apagada' : 'Consigna'}</div>
+            <div className="label">{mode === 'off' ? 'Modo apagado' : 'Consigna'}</div>
             <div className="value" data-tick={`set${room.id}`}>
               {mode === 'off' ? '—' : es((room.tset || '—').replace('.', ','))}
             </div>

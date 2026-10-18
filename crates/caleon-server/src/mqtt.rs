@@ -585,8 +585,35 @@ async fn run(app: Arc<App>, cfg: Config) {
                         tracing::info!("mqtt: {} {payload:?} -> {cmd:?}", p.topic);
                         let a = app.clone();
                         let c = cmd.clone();
+                        let room = match cmd {
+                            Command::Hvac { id, .. }
+                            | Command::Preset { id, .. }
+                            | Command::Target { id, .. } => Some(id),
+                            Command::House { .. } => None,
+                        };
+                        let said = match &cmd {
+                            Command::Hvac { heat: false, .. } => "Modo Apagado".to_string(),
+                            Command::Hvac { heat: true, .. } => "Encendida (Normal)".to_string(),
+                            Command::Preset { mode, .. } => format!(
+                                "Modo {}",
+                                match *mode {
+                                    "eco" => "Eco",
+                                    "turbo" => "Confort",
+                                    _ => "Normal",
+                                }
+                            ),
+                            Command::Target { target, .. } => {
+                                format!("Consigna → {target:.1} °C").replace('.', ",")
+                            }
+                            Command::House { mode } => {
+                                format!("Toda la casa: modo {}", house_label(mode))
+                            }
+                        };
                         match tokio::task::spawn_blocking(move || execute(&a, &c)).await {
-                            Ok(Ok(())) => crate::web::reread_later(&app, true),
+                            Ok(Ok(())) => {
+                                app.log("ha", room, said);
+                                crate::web::reread_later(&app, room, true)
+                            }
                             Ok(Err(e)) => tracing::warn!("mqtt: {cmd:?} failed: {e:#}"),
                             Err(e) => tracing::warn!("mqtt: {cmd:?} panicked: {e}"),
                         }

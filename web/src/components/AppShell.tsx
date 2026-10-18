@@ -3,12 +3,13 @@ import { Link, Outlet, useLocation, useNavigationType } from 'react-router'
 import { useAppState } from '../context/AppContext.tsx'
 import { hasMenuSync } from '../lib/menuSync.ts'
 import { applyTheme } from '../lib/theme.ts'
+import { BackButton } from './BackButton.tsx'
 import { MetaHeader } from './MetaHeader.tsx'
 import { TabBar, TopNav } from './TabBar.tsx'
 import { ToastLayer } from './Toast.tsx'
 
 const depthOf = (p: string) =>
-  p.startsWith('/timer') ? 2 : p.startsWith('/room') ? 1 : 0
+  p.startsWith('/timer') ? 2 : p.startsWith('/room') || p === '/info' || p === '/backups' ? 1 : 0
 
 export function AppShell() {
   const { staleData, bumpNav } = useAppState()
@@ -64,9 +65,17 @@ export function AppShell() {
     <>
       <header ref={headerRef}>
         <div className="bar">
+          <BackButton />
           <Link to="/" className="brand">
             <h1>
-              °<span>CALEON</span>
+              <svg className="mark" viewBox="0 0 64 64" aria-hidden="true">
+                <rect width="64" height="64" rx="16" />
+                <path d="M32 12c-3.9 0-7 3.1-7 7v18a11 11 0 1 0 14 0V19c0-3.9-3.1-7-7-7zM32 44V24" />
+                <circle cx="32" cy="45" r="5.5" />
+              </svg>
+              <span>
+                Open<span className="dim">Caleon</span>
+              </span>
             </h1>
           </Link>
           <MetaHeader />

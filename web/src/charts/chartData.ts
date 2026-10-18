@@ -72,7 +72,7 @@ export async function drawRoomChart({
   Object.entries(data).forEach(([room, rows]) => {
     if (onlyRoom !== null && room !== onlyRoom) return
     const r = state.rooms.find((r) => String(r.id) === room),
-      name = r ? roomTitle(r) : 'Sala ' + room,
+      name = r ? roomTitle(r) : 'Habitación ' + room,
       c = pal[Number(room) % pal.length]
     if (what === 'hum') {
       if (rows.some((x) => x[2] !== null))

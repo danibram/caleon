@@ -188,9 +188,8 @@ Con `WEB=0`, `HISTORY=0` y `BACKUP_HOURS=0` el servidor se queda en un servicio 
 por minuto y alimenta Prometheus y Home Assistant. `contrib/stack/docker-compose.yml` lo arranca así junto a
 Mosquitto, Home Assistant, Prometheus y Grafana, y `contrib/stack/test.sh` comprueba toda la cadena.
 
-El termostato trata cada consulta remota como si alguien lo estuviera usando y mantiene la pantalla encendida.
-Con una lectura por minuto se apaga sola entre lecturas; con varios servidores o pestañas leyéndolo a la vez,
-no.
+Las lecturas (habitaciones, pantallas de estado) no despiertan la pantalla del termostato. Moverse por su menú
+sí, así que la pantalla se enciende mientras alguien usa Experto y durante el recorrido de la copia (un minuto).
 
 ## Copias de seguridad
 
@@ -344,6 +343,7 @@ GitHub con los binarios y notas generadas.
 | GET | `/api/history?hours=24` | histórico por habitación |
 | GET | `/api/metrics?hours=24` | histórico de todos los valores del estado |
 | GET | `/api/log` | avisos del equipo |
+| GET | `/api/events?limit=300` | lo que ha hecho el servidor, lo más nuevo primero: `{ts, source: web/ha/auto/server, room, text}` |
 | GET/POST | `/api/backups` | listar / crear copia |
 | GET/DELETE | `/api/backups/{nombre}` | descargar / borrar |
 | POST | `/api/backups/{nombre}/restore` | `{"apply": false}` compara; `{"apply": true}` restaura; admite `"backup": {...}` para una copia subida |

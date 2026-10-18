@@ -1,3 +1,4 @@
+import { StateText } from '../components/StateText.tsx'
 import { deviceLabel } from '../lib/metrics.ts'
 import { Link } from 'react-router'
 import { Banner } from '../components/Banner.tsx'
@@ -70,7 +71,9 @@ export function StatusView() {
               <RoomIcon room={r} className={isHeating(r) ? 'hot' : ''} />
               <span className="nr-name">
                 <b>{roomTitle(r)}</b>
-                <span className="muted small">{stateLine(r).text}</span>
+                <span className="muted small">
+                  <StateText st={stateLine(r)} />
+                </span>
               </span>
               <span className="nr-temp">{fmtC(num(r.temperature))}°</span>
             </Link>

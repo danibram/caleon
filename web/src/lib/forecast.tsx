@@ -34,7 +34,7 @@ export function Forecast({ room, S }: { room: Room; S: Snapshot | null }) {
           </p>
         ) : null}
         <p className="forecast small-note">
-          Apagada sigue protegida contra heladas. Un modo elegido a mano se mantiene hasta el siguiente
+          En modo apagado sigue protegida contra heladas. Un modo elegido a mano se mantiene hasta el siguiente
           cambio del horario.
         </p>
       </>

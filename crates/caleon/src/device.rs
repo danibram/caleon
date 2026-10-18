@@ -5,7 +5,10 @@ use crate::transport::Transport;
 use anyhow::{anyhow, bail, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
-use std::sync::{Arc, RwLock};
+use std::collections::VecDeque;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, RwLock};
+use std::time::{Duration, Instant};
 
 pub const SYSTEM_ROOM: u16 = 65535;
 pub const ROOM_MODES: [&str; 4] = ["off", "regular", "eco", "turbo"];
@@ -27,6 +30,9 @@ const FEATURES: [(&str, u32); 8] = [
 pub struct Device {
     pub id: String,
     transport: RwLock<Arc<dyn Transport>>,
+    /// Calls made since start, and when the ones of the last minute happened.
+    calls: AtomicU64,
+    recent: Mutex<VecDeque<Instant>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,6 +67,8 @@ impl Device {
         Device {
             id,
             transport: RwLock::new(transport),
+            calls: AtomicU64::new(0),
+            recent: Mutex::new(VecDeque::new()),
         }
     }
 
@@ -72,13 +80,41 @@ impl Device {
         *self.transport.write().unwrap() = t;
     }
 
+    fn note_call(&self) {
+        self.calls.fetch_add(1, Ordering::Relaxed);
+        let mut recent = self.recent.lock().unwrap();
+        let now = Instant::now();
+        recent.push_back(now);
+        while recent
+            .front()
+            .is_some_and(|t| now.duration_since(*t) > Duration::from_secs(60))
+        {
+            recent.pop_front();
+        }
+    }
+
+    /// (calls since start, calls in the last minute): what the thermostat has had to answer.
+    pub fn calls(&self) -> (u64, usize) {
+        let mut recent = self.recent.lock().unwrap();
+        let now = Instant::now();
+        while recent
+            .front()
+            .is_some_and(|t| now.duration_since(*t) > Duration::from_secs(60))
+        {
+            recent.pop_front();
+        }
+        (self.calls.load(Ordering::Relaxed), recent.len())
+    }
+
     /// Calls that can be repeated safely (reads, absolute writes).
     pub fn rpc(&self, query: &str, args: &[(&str, Arg)]) -> Result<Value> {
+        self.note_call();
         self.transport().invoke(query, args, true)
     }
 
     /// Calls relative to the current state (setpoint steps, menu actions), never retried.
     pub fn rpc_once(&self, query: &str, args: &[(&str, Arg)]) -> Result<Value> {
+        self.note_call();
         self.transport().invoke(query, args, false)
     }
 

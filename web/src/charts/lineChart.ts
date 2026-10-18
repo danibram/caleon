@@ -99,7 +99,7 @@ export function lineChart({
       g += `<line class="gl" x1="${P.l}" x2="${W - P.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${P.l - 6}" y="${y(v) + 4}" text-anchor="end">${String(+v.toFixed(1)).replace('.', ',')}${yUnit}</text>`
   }
   const span = t1 - t0,
-    want = narrow ? 5 : 8
+    want = narrow ? (lanes ? 3 : 5) : 8
   const step =
     [1800, 3600, 7200, 10800, 21600, 43200, 86400, 172800, 604800].find(
       (st) => span / st <= want,
@@ -145,8 +145,12 @@ export function lineChart({
           start = null
         }
       })
-      const maxCh = narrow ? 13 : 22,
-        lab = s.name.length > maxCh ? s.name.slice(0, maxCh - 1) + '…' : s.name
+      // on a phone the label column is short: drop the zone letter and shorten the pump and boiler
+      const short = narrow
+        ? s.name.replace(/ · zona [A-Z]$/, '').replace('Bomba del circuito', 'Bomba').replace('Demanda a la caldera', 'Caldera')
+        : s.name
+      const maxCh = narrow ? 14 : 22,
+        lab = short.length > maxCh ? short.slice(0, maxCh - 1) + '…' : short
       lines += `<rect class="lane" x="${P.l}" y="${top + (lh - bh) / 2}" width="${W - P.l - P.r}" height="${bh}" rx="${bh / 2}"/>${rects}`
       laneLabels += `<text class="lane-label" x="2" y="${top + lh / 2 + 4}"><title>${esc(s.name)}</title>${esc(lab)}</text>`
       return
@@ -182,6 +186,56 @@ export function lineChart({
     v === null || v === undefined
       ? '—'
       : v.toFixed(1).replace('.', ',') + (yUnit === '°' ? ' °C' : yUnit === '%' ? ' %' : '')
+  if (lanes) {
+    // hover or touch: the time and, for each lane, whether it was on
+    const wrap = svg.parentElement
+    if (wrap) {
+      const found = wrap.querySelector('.readout')
+      let tip: HTMLElement
+      if (found instanceof HTMLElement) tip = found
+      else {
+        tip = document.createElement('div')
+        tip.className = 'readout'
+        wrap.insertBefore(tip, svg)
+      }
+      const idle = `<span class="muted">${matchMedia('(any-pointer: coarse)').matches ? 'Toca la gráfica' : 'Pasa el ratón por la gráfica'} para ver cada momento</span>`
+      tip.innerHTML = idle
+      const move = (ev: PointerEvent) => {
+        const rect = svg.getBoundingClientRect(),
+          px = ((ev.clientX - rect.left) / rect.width) * W
+        if (px < P.l || px > W - P.r) return
+        const t = t0 + ((px - P.l) / (W - P.l - P.r)) * (t1 - t0)
+        const rows = visible.map((s) => {
+          let last: MetricPoint | null = null
+          for (const p of s.points) if (p[1] !== null && p[0] <= t) last = p
+          const on = last !== null && t - last[0] < gap * 4 ? last[1]! >= 0.5 : null
+          return { s, on }
+        })
+        const sc = svg.querySelector('.scrub')
+        const line = sc?.firstElementChild
+        if (sc instanceof SVGGElement && line instanceof SVGLineElement) {
+          sc.style.display = ''
+          line.setAttribute('x1', String(px))
+          line.setAttribute('x2', String(px))
+        }
+        tip.innerHTML =
+          `<b>${new Date(t * 1000).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</b>` +
+          rows
+            .map(
+              ({ s, on }) =>
+                `<span><i style="background:${on ? s.color : 'var(--line)'}"></i>${esc(s.name)} <b>${on === null ? 'sin dato' : on ? 'sí' : 'no'}</b></span>`,
+            )
+            .join('')
+      }
+      svg.onpointermove = move
+      svg.onpointerdown = move
+      svg.onpointerleave = () => {
+        const sc = svg.querySelector('.scrub')
+        if (sc instanceof SVGGElement) sc.style.display = 'none'
+        tip.innerHTML = idle
+      }
+    }
+  }
   if (!lanes) {
     const wrap = svg.parentElement
     if (wrap) {

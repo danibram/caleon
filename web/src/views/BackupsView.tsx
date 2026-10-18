@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { Link } from 'react-router'
 import { Banner } from '../components/Banner.tsx'
 import { Icon } from '../components/Icon.tsx'
 import { useApp, type Snapshot } from '../context/AppContext.tsx'
@@ -256,9 +255,6 @@ export function BackupsView() {
   return (
     <>
       <Banner />
-      <Link className="back" to="/settings">
-        <Icon name="back" className="mini" /> Ajustes
-      </Link>
       <div className="page-head">
         <h3>Copias de seguridad</h3>
         <button

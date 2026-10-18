@@ -24,6 +24,8 @@ export type Snapshot = Omit<SnapshotBase, 'rooms'> & {
   read_only: boolean
   /** room id -> mode -> last setpoint seen in that mode */
   mode_temps: Record<string, Record<string, number>>
+  /** queries sent to the thermostat: since start, and in the last minute */
+  device_calls?: { total: number; last_minute: number }
 }
 
 export type StateSnapshot = Snapshot

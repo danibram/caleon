@@ -63,6 +63,17 @@ pub struct Snapshot {
     #[serde(skip)]
     #[ts(skip)]
     pub weeks_at: Option<i64>,
+    /// When the feature flags were last read; they change only with a firmware update.
+    #[serde(skip)]
+    #[ts(skip)]
+    pub features_at: Option<i64>,
+    /// How many status screens had content last time, and when an extra one was last looked for.
+    #[serde(skip)]
+    #[ts(skip)]
+    pub status_pages: usize,
+    #[serde(skip)]
+    #[ts(skip)]
+    pub status_probe_at: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, TS)]
@@ -153,9 +164,116 @@ impl App {
     }
 
     /// Reads everything shown on the overview and the status screens. Blocking.
+    /// Reads the status screens cal:9, cal:9.1, ... up to `max_pages`, stopping at the first empty one.
+    fn read_status(&self, extended: bool, max_pages: usize) -> Vec<Vec<String>> {
+        let mut pages = Vec::new();
+        for n in 0..max_pages {
+            let id = if n == 0 {
+                "cal:9".to_string()
+            } else {
+                format!("cal:9.{n}")
+            };
+            let lines: Vec<String> = match self.device.menu_detail(extended, "information", &id) {
+                Ok(v) => v["menu"]
+                    .as_array()
+                    .map(|a| {
+                        a.iter()
+                            .map(|l| l["text"].as_str().unwrap_or("").to_string())
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+                Err(e) => {
+                    tracing::debug!("status page {id}: {e}");
+                    vec![]
+                }
+            };
+            if lines.is_empty() {
+                break;
+            }
+            pages.push(lines);
+        }
+        pages
+    }
+
+    /// The zone valves of a room ("116.B Zona B: On"), through the zone -> room-type mapping.
+    fn outputs_for(room: &Room, zones: &Map<String, Value>, metrics: &[Metric]) -> Vec<Value> {
+        zones
+            .iter()
+            .filter(|(_, kind)| kind.as_str() == Some(room.kind.as_str()))
+            .filter_map(|(zone, _)| {
+                metrics
+                    .iter()
+                    .find(|m| m.group == "Salidas" && m.label.ends_with(&format!("Zona {zone}")))
+                    .map(|m| json!({"zone": zone, "label": m.label, "on": m.value == Some(1.0)}))
+            })
+            .collect()
+    }
+
+    /// Rereads what one room shows in four calls instead of ten: every room's temperature, that
+    /// room's mode and setpoint, and the status screens (valves, pump). For the moments after a
+    /// change to the room.
+    pub fn refresh_room(&self, id: u16) -> Result<()> {
+        let d = &self.device;
+        let list = d.room_list()?;
+        let st = d.room_state(id, &RoomChange::default())?;
+        let (extended, pages_known) = {
+            let s = self.snapshot.read().unwrap();
+            (
+                s.features
+                    .get("extended_api")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(true),
+                s.status_pages.max(1),
+            )
+        };
+        let pages = self.read_status(extended, pages_known);
+        let metrics = status::parse(&pages.concat());
+        let mut snap = self.snapshot.write().unwrap();
+        for (i, r) in list.iter().enumerate() {
+            if let Some(room) = snap.rooms.iter_mut().find(|x| x.id == i as u16) {
+                room.name = r["name"].as_str().unwrap_or("").to_string();
+                room.temperature = r["temperature"].as_str().unwrap_or("").to_string();
+                room.humidity = r["humidity"].as_str().unwrap_or("").to_string();
+            }
+        }
+        if let Some(room) = snap.rooms.iter_mut().find(|x| x.id == id) {
+            room.name = st.name.clone();
+            room.state = Some(st);
+        }
+        let zones = snap.zones.clone();
+        for room in snap.rooms.iter_mut() {
+            room.outputs = Self::outputs_for(room, &zones, &metrics);
+        }
+        snap.status = metrics;
+        snap.devices = status::devices(&pages.concat())
+            .into_iter()
+            .map(|(id, name)| (id, json!(name)))
+            .collect();
+        snap.status_lines = pages;
+        snap.updated = Some(now());
+        snap.error = None;
+        Ok(())
+    }
+
     pub fn refresh(&self, record: bool) -> Result<()> {
         let d = &self.device;
-        let features = d.features()?;
+        let ts = now();
+        let (cached_features, features_at, pages_known, probe_at) = {
+            let s = self.snapshot.read().unwrap();
+            (
+                s.features.clone(),
+                s.features_at,
+                s.status_pages,
+                s.status_probe_at,
+            )
+        };
+        // the feature flags only change with a firmware update: once an hour is plenty
+        let features_fresh = cached_features.is_empty() || ts - features_at.unwrap_or(0) > 3600;
+        let features = if features_fresh {
+            d.features()?
+        } else {
+            cached_features
+        };
         let list = d.room_list()?;
         let mut rooms = Vec::new();
         for (i, r) in list.iter().enumerate() {
@@ -186,40 +304,16 @@ impl App {
             None
         };
 
-        // status screens: cal:9, cal:9.1, ... until an empty page
+        // status screens: only the pages known to have content; once an hour look for one more,
+        // which costs the one call that comes back empty
         let extended = features
             .get("extended_api")
             .and_then(Value::as_bool)
             .unwrap_or(true);
-        let mut pages = Vec::new();
-        for n in 0..6 {
-            let id = if n == 0 {
-                "cal:9".to_string()
-            } else {
-                format!("cal:9.{n}")
-            };
-            let lines: Vec<String> = match d.menu_detail(extended, "information", &id) {
-                Ok(v) => v["menu"]
-                    .as_array()
-                    .map(|a| {
-                        a.iter()
-                            .map(|l| l["text"].as_str().unwrap_or("").to_string())
-                            .collect()
-                    })
-                    .unwrap_or_default(),
-                Err(e) => {
-                    tracing::debug!("status page {id}: {e}");
-                    vec![]
-                }
-            };
-            if lines.is_empty() {
-                break;
-            }
-            pages.push(lines);
-        }
+        let probe = pages_known == 0 || ts - probe_at.unwrap_or(0) > 3600;
+        let pages = self.read_status(extended, if probe { 6 } else { pages_known });
         let metrics = status::parse(&pages.concat());
 
-        let ts = now();
         // weekly programs change rarely, so reread them every 10 minutes
         let (prev_weeks, weeks_at) = {
             let snap = self.snapshot.read().unwrap();
@@ -261,24 +355,16 @@ impl App {
                 snap.nabto = v["nabto"].as_str().map(String::from);
             }
         }
-        // link "116.B Zona B: On" outputs to rooms through the zone mapping
         for room in rooms.iter_mut() {
-            room.outputs = snap
-                .zones
-                .iter()
-                .filter(|(_, kind)| kind.as_str() == Some(room.kind.as_str()))
-                .filter_map(|(zone, _)| {
-                    metrics
-                        .iter()
-                        .find(|m| {
-                            m.group == "Salidas" && m.label.ends_with(&format!("Zona {zone}"))
-                        })
-                        .map(
-                            |m| json!({"zone": zone, "label": m.label, "on": m.value == Some(1.0)}),
-                        )
-                })
-                .collect();
+            room.outputs = Self::outputs_for(room, &snap.zones, &metrics);
         }
+        if features_fresh {
+            snap.features_at = Some(ts);
+        }
+        if probe {
+            snap.status_probe_at = Some(ts);
+        }
+        snap.status_pages = pages.len();
         if record {
             let samples: Vec<RoomSample> = rooms
                 .iter()
@@ -309,6 +395,16 @@ impl App {
         snap.updated = Some(ts);
         snap.error = None;
         Ok(())
+    }
+
+    /// Records what the server did (source: "web", "ha", "auto", "server") for the Avisos page.
+    pub fn log(&self, source: &str, room: Option<u16>, text: impl Into<String>) {
+        let text = text.into();
+        tracing::info!(
+            "[{source}] {}{text}",
+            room.map(|r| format!("room {r}: ")).unwrap_or_default()
+        );
+        self.store.add_event(now(), source, room, &text);
     }
 
     pub fn apply_room_state(&self, id: u16, state: RoomState) {
@@ -588,7 +684,8 @@ impl App {
                     Err(e) => tracing::warn!("backup: timer {name} of room {}: {e}", r.id),
                 }
             }
-            rooms.push(json!({"id": r.id, "name": r.name, "type": r.kind, "state": r.state, "timers": timers}));
+            let mode_temps = self.store.mode_temps()[r.id.to_string()].clone();
+            rooms.push(json!({"id": r.id, "name": r.name, "type": r.kind, "state": r.state, "timers": timers, "mode_temps": mode_temps}));
         }
         let hws = if self.has("dhw_timer") {
             self.device
@@ -708,6 +805,25 @@ impl App {
                     self.apply_room_state(id, st);
                 }
             }
+            if let Some(saved) = r["mode_temps"].as_object() {
+                let current = self.store.mode_temps();
+                let mut targets = Vec::new();
+                for mode in ["regular", "eco", "turbo"] {
+                    let (Some(want), now) = (
+                        saved.get(mode).and_then(Value::as_f64),
+                        current[id.to_string()][mode].as_f64(),
+                    ) else {
+                        continue;
+                    };
+                    if now != Some(want) {
+                        changes.push(json!({"what": format!("Temperatura de {} en {}", MODE_NAMES.iter().find(|(k, _)| *k == mode).map(|(_, n)| *n).unwrap_or(mode), cur.name), "from": now.map(|v| format!("{v:.1} °C")).unwrap_or_else(|| "sin dato".into()), "to": format!("{want:.1} °C")}));
+                        targets.push((mode.to_string(), want));
+                    }
+                }
+                if apply && timers && !targets.is_empty() {
+                    self.set_mode_temps(id, &targets, false)?;
+                }
+            }
             if !timers {
                 continue;
             }
@@ -749,6 +865,8 @@ impl App {
     }
 }
 
+const MODE_NAMES: [(&str, &str); 3] = [("regular", "Normal"), ("eco", "Eco"), ("turbo", "Confort")];
+
 pub const DAYS: [&str; 7] = [
     "lunes",
     "martes",
@@ -765,8 +883,15 @@ pub const DAYS: [&str; 7] = [
 fn config_fingerprint(b: &Value) -> Value {
     let mut values = Vec::new();
     flatten_values(&b["menu"], &mut values);
+    // the mode and setpoint of the moment follow the schedule, so they are not configuration
+    let rooms: Vec<Value> = b["rooms"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|r| json!({"id": r["id"], "name": r["name"], "type": r["type"], "timers": r["timers"], "mode_temps": r["mode_temps"]}))
+        .collect();
     json!({
-        "rooms": b["rooms"], "system": b["system"], "hws_timer": b["hws_timer"],
+        "rooms": rooms, "hws_timer": b["hws_timer"],
         "zones": b["zones"], "sensors": b["sensors"], "firmware": b["firmware"], "values": values,
     })
 }
@@ -950,5 +1075,29 @@ mod tests {
         assert_eq!(parse_number("25.2°C"), Some(25.2));
         assert_eq!(parse_number("72.8%"), Some(72.8));
         assert_eq!(parse_number("Off"), None);
+    }
+}
+
+#[cfg(test)]
+mod fingerprint_tests {
+    use super::*;
+
+    #[test]
+    fn fingerprint_ignores_the_state_of_the_moment() {
+        let backup = |mode: &str, eco: f64| {
+            json!({
+                "rooms": [{"id": 0, "name": "Habitación 1", "type": "living", "state": {"mode": mode, "tset": "21.5°C"},
+                           "timers": {"heating": [["regular"]]}, "mode_temps": {"regular": 21.5, "eco": eco}}],
+                "system": {"mode": mode}, "zones": {"B": "living"}, "menu": {"children": []},
+            })
+        };
+        assert_eq!(
+            config_fingerprint(&backup("regular", 18.0)),
+            config_fingerprint(&backup("eco", 18.0))
+        );
+        assert_ne!(
+            config_fingerprint(&backup("regular", 18.0)),
+            config_fingerprint(&backup("regular", 18.5))
+        );
     }
 }

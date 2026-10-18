@@ -24,6 +24,17 @@ export const nowSlotIdx = () => {
   return d.getHours() * 2 + (d.getMinutes() >= 30 ? 1 : 0)
 }
 
+/** The mode the room's program says for right now, or null without a program. */
+export function scheduledModeNow(r: Room): string | null {
+  return r.week?.[todayIdx()]?.[nowSlotIdx()] ?? null
+}
+
+/** True when today's program never changes mode: the thermostat then never leaves a mode set by hand. */
+export function flatScheduleToday(r: Room): boolean {
+  const day = r.week?.[todayIdx()]
+  return !!day && day.every((m) => m === day[0])
+}
+
 export type NextChange =
   | { kind: 'change'; now: string; mode: string; slot: number; dayOffset: number }
   | { kind: 'steady'; now: string }
@@ -70,7 +81,7 @@ export function bandCaption(r: Room, big = false): BandCaption {
     caption = r.vacation
       ? 'Programa detenido durante las vacaciones'
       : big
-        ? 'Programa de hoy, detenido mientras esté apagada'
+        ? 'Programa de hoy, detenido mientras esté en modo apagado'
         : 'Programa detenido'
   } else if (nc?.kind === 'change') {
     const when =

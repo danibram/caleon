@@ -10,10 +10,8 @@ import { RoomCard } from '../components/RoomCard.tsx'
 import { RoomControls } from '../components/RoomControls.tsx'
 import { useApp } from '../context/AppContext.tsx'
 import { SYSTEM } from '../lib/constants.ts'
-import { MODE_LABEL } from '../lib/constants.ts'
 import { fmtC, num } from '../lib/format.ts'
-import { insights, upcomingChangeToday } from '../lib/insights.ts'
-import { hhmm } from '../lib/schedule.ts'
+import { insights } from '../lib/insights.ts'
 import { isHeating, modeOf, roomById, roomTitle } from '../lib/rooms.ts'
 
 const history6h = () => api<HistoryResponse>('/api/history?hours=6')
@@ -27,7 +25,6 @@ function HomeSummary({ hist }: { hist: HistoryResponse | null }) {
   const avg = temps.length ? temps.reduce((a, b) => a + b, 0) / temps.length : null
   const heating = rooms.filter(isHeating)
   const off = rooms.filter((r) => modeOf(r) === 'off')
-  const hum = rooms.map((r) => num(r.humidity)).filter((v): v is number => v !== null)
   const outdoor = (S.status || []).find((m) => m.label === 'Exterior')
   const ins = insights(hist, S)
   const fmtClock = (ts: number) =>
@@ -37,9 +34,18 @@ function HomeSummary({ hist }: { hist: HistoryResponse | null }) {
   if (heating.length) {
     line = `Calentando ${heating.map((r) => roomTitle(r)).join(' y ')}`
   } else if (off.length === rooms.length) {
-    line = ins.offSince ? `Todo apagado desde las ${fmtClock(ins.offSince)}` : 'Calefacción apagada en toda la casa'
+    line = ins.offSince
+      ? `Toda la casa en modo apagado desde las ${fmtClock(ins.offSince)}`
+      : 'Toda la casa en modo apagado'
   } else {
-    line = 'Todas las habitaciones en su temperatura'
+    const waiting = rooms.filter((r) => {
+      const t = num(r.temperature)
+      const sp = num(r.tset)
+      return modeOf(r) !== 'off' && t !== null && sp !== null && t < sp
+    })
+    line = waiting.length
+      ? `Nada calienta ahora · ${waiting.map((r) => roomTitle(r)).join(' y ')} por debajo de su objetivo`
+      : 'Todas las habitaciones a temperatura'
   }
 
   const trend =
@@ -47,9 +53,8 @@ function HomeSummary({ hist }: { hist: HistoryResponse | null }) {
       ? ''
       : Math.abs(ins.trend) < 0.05
         ? ' · estable'
-        : ` · ${ins.trend > 0 ? 'sube' : 'baja'} ${fmtC(Math.abs(ins.trend))} °C/h`
+        : ` · ${ins.trend > 0 ? 'sube' : 'baja'}\u00a0${fmtC(Math.abs(ins.trend))}\u00a0°C/h`
 
-  const upcoming = upcomingChangeToday(rooms)
 
   return (
     <section className="hero">
@@ -70,33 +75,16 @@ function HomeSummary({ hist }: { hist: HistoryResponse | null }) {
           {trend}
         </div>
       </div>
-      <div className="hero-facts">
-        {hum.length ? (
-          <div>
-            <span>{Math.round(hum.reduce((a, b) => a + b, 0) / hum.length)} %</span>
-            humedad
-          </div>
-        ) : null}
-        {outdoor && outdoor.value != null ? (
-          <div>
-            <span>{fmtC(outdoor.value)}°</span>
-            fuera
-          </div>
-        ) : null}
-        {upcoming ? (
-          <div>
-            <span>{hhmm(upcoming.nc.slot)}</span>
-            {roomTitle(upcoming.r)} a {(MODE_LABEL[upcoming.nc.mode] || '').toLowerCase()}
-          </div>
-        ) : (
-          <div>
-            <span>
-              {rooms.length - off.length}/{rooms.length}
-            </span>
-            encendidas
-          </div>
-        )}
-      </div>
+      {outdoor?.value != null ? (
+        <div className="hero-facts">
+          {outdoor && outdoor.value != null ? (
+            <div>
+              <span>{fmtC(outdoor.value)}°</span>
+              fuera
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </section>
   )
 }
@@ -115,7 +103,7 @@ function AllRoomsCard({ mobileOnly = false }: { mobileOnly?: boolean }) {
       </span>
       <div>
         <div className="room-title">Toda la casa</div>
-        <div className="muted small">Un modo para todas las habitaciones</div>
+        <div className="muted small">Pone todas las habitaciones en ese modo hasta su siguiente cambio de horario</div>
       </div>
     </div>
   )
@@ -142,6 +130,16 @@ export function OverviewView() {
   })
 
   if (!S) return null
+  if (!S.updated && !S.rooms.length) {
+    return (
+      <>
+        <Banner />
+        <div className="empty">
+          <span className="spin" /> Esperando la primera lectura del termostato…
+        </div>
+      </>
+    )
+  }
 
   const chartHours = Math.min(24, Math.max(3, (historySpan(S) / 3600) * 1.15))
 

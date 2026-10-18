@@ -76,7 +76,7 @@ export function Gauge({ room }: { room: Room }) {
       <svg
         viewBox="0 0 200 200"
         role="img"
-        aria-label={`Temperatura ${fmtC(t)} grados${off ? ', apagada' : `, objetivo ${fmtC(sp)}`}`}
+        aria-label={`Temperatura ${fmtC(t)} grados${off ? ', modo apagado' : `, objetivo ${fmtC(sp)}`}`}
       >
         <path className="g-track" d={full} fill="none" stroke="var(--soft)" strokeWidth="14" strokeLinecap="round" />
         {!off ? (
@@ -122,7 +122,7 @@ export function Gauge({ room }: { room: Room }) {
         </div>
         <div className="g-set">
           {off ? (
-            'Apagada'
+            'Modo apagado'
           ) : (
             <>
               Objetivo <b data-tick={`set${room.id}`}>{fmtC(sp)} °C</b>

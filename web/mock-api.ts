@@ -78,6 +78,7 @@ function route(method: string, path: string): [number, unknown] {
     if (path === '/api/history') return [200, shifted().history]
     if (path === '/api/metrics') return [200, shifted().metrics]
     if (path === '/api/log') return [200, fixture('log')]
+    if (path === '/api/events') return [200, fixture('events')]
     if (path === '/api/settings') return [200, fixture('settings')]
     if (path === '/api/backups') return [200, fixture('backups')]
     if (path === '/api/menu/values') return [200, fixture('menu-values')]

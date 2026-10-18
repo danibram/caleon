@@ -1,4 +1,5 @@
 import { createHashRouter } from 'react-router'
+import { NotFound } from './views/NotFound.tsx'
 import { AppShell } from './components/AppShell.tsx'
 import { StateGate } from './components/StateGate.tsx'
 import { ChartsView } from './charts/ChartsView.tsx'
@@ -15,6 +16,7 @@ export const router = createHashRouter([
   {
     path: '/',
     element: <AppShell />,
+    errorElement: <NotFound />,
     children: [
       {
         index: true,
@@ -63,3 +65,4 @@ export const router = createHashRouter([
     ],
   },
 ])
+

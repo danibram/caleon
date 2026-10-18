@@ -28,8 +28,8 @@ export function Banner() {
     )
   }
 
-  const age = S.updated ? now / 1000 - S.updated : 1e9
-  if (S.error || age > 180) {
+  const age = S.updated ? now / 1000 - S.updated : 0
+  if (S.updated && (S.error || age > 180)) {
     const since = outageSince(S)
     parts.push(
       <div className="banner" key="outage">

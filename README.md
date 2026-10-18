@@ -188,8 +188,8 @@ With `WEB=0`, `HISTORY=0` and `BACKUP_HOURS=0` the server is a plain service tha
 minute and feeds Prometheus and Home Assistant. `contrib/stack/docker-compose.yml` runs it that way next to
 Mosquitto, Home Assistant, Prometheus and Grafana, and `contrib/stack/test.sh` checks the whole chain.
 
-The thermostat treats every remote query as someone using it and keeps its screen lit. With one read per
-minute the screen turns off between reads; with several servers or tabs reading it at once, it does not.
+Reads (rooms, status screens) do not wake the thermostat's screen. Moving through its menu does, so the
+screen lights up while someone uses Experto and during the backup walk (about a minute).
 
 ## Backups
 
@@ -340,6 +340,7 @@ notes.
 | GET | `/api/history?hours=24` | history per room |
 | GET | `/api/metrics?hours=24` | history of every status value |
 | GET | `/api/log` | device notices |
+| GET | `/api/events?limit=300` | what the server did, newest first: `{ts, source: web/ha/auto/server, room, text}` |
 | GET/POST | `/api/backups` | list / create a backup |
 | GET/DELETE | `/api/backups/{name}` | download / delete |
 | POST | `/api/backups/{name}/restore` | `{"apply": false}` compares; `{"apply": true}` restores; accepts `"backup": {...}` for an uploaded file |

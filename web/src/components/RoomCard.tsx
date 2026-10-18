@@ -1,7 +1,8 @@
 import { Link } from 'react-router'
 import type { Room, Snapshot } from '../context/AppContext.tsx'
 import { es, fmtC, num } from '../lib/format.ts'
-import { isHeating, modeOf, roomTitle, stateLine } from '../lib/rooms.ts'
+import { isHeating, modeOf, roomTitle, stateLine, stateSentence } from '../lib/rooms.ts'
+import { StateText } from './StateText.tsx'
 import { palette } from '../charts/chartData.ts'
 import { Band } from './Band.tsx'
 import { Icon } from './Icon.tsx'
@@ -33,7 +34,7 @@ export function RoomCard({ room, S, index = 0 }: RoomCardProps) {
       className={`card room-card ${isHeating(room) ? 'heating' : ''} ${modeOf(room) === 'off' ? 'is-off' : ''}`}
       style={{ '--k': index }}
       data-room={room.id}
-      aria-label={`${roomTitle(room)}, ${fmtC(t)} grados, ${st.text}`}
+      aria-label={`${roomTitle(room)}, ${fmtC(t)} grados, ${stateSentence(st)}`}
     >
       <div className="rc-top">
         <RoomIcon room={room} className={isHeating(room) ? 'hot' : ''} />
@@ -47,8 +48,8 @@ export function RoomCard({ room, S, index = 0 }: RoomCardProps) {
             />
           </div>
           <div className={`rc-sub st-${st.cls}`}>
-            {st.cls === 'heat' ? <Icon name="flame" className="mini" /> : <span className="sdot" />}
-            {st.text}
+            {st.cls === 'heat' ? <Icon name="flame" className="mini" /> : null}
+            <StateText st={st} />
           </div>
         </div>
         <div className="rc-temp">

@@ -8,9 +8,11 @@ import { Banner } from '../components/Banner.tsx'
 import { Band } from '../components/Band.tsx'
 import { Gauge } from '../components/Gauge.tsx'
 import { Icon } from '../components/Icon.tsx'
+import { FollowSchedule } from '../components/FollowSchedule.tsx'
 import { ModeTemps } from '../components/ModeTemps.tsx'
 import { RoomControls } from '../components/RoomControls.tsx'
 import { RoomIcon } from '../components/RoomIcon.tsx'
+import { StateText } from '../components/StateText.tsx'
 import { useApp } from '../context/AppContext.tsx'
 import { useRoomChange, useRoomControlGuard } from '../hooks/useRoomChange.ts'
 import { SYSTEM } from '../lib/constants.ts'
@@ -145,8 +147,8 @@ export function RoomView() {
               <span className="rc-name">
                 <b>{roomTitle(x)}</b>
                 <span className={`rc-sub st-${xst.cls}`}>
-                  {xst.cls === 'heat' ? <Icon name="flame" className="mini" /> : <span className="sdot" />}
-                  {xst.text}
+                  {xst.cls === 'heat' ? <Icon name="flame" className="mini" /> : null}
+                  <StateText st={xst} />
                 </span>
               </span>
               <span className="hr-temp">
@@ -162,9 +164,6 @@ export function RoomView() {
   return (
     <>
       <Banner />
-      <Link className="back" to="/">
-        <Icon name="back" className="mini" /> Inicio
-      </Link>
       <div className="room-layout">
         <div className="room-hero" data-room={r.id}>
           <div className="row">
@@ -172,7 +171,7 @@ export function RoomView() {
             <div>
               <h3>{roomTitle(r)}</h3>
               <div className={`rc-sub st-${st.cls}`}>
-                {isSys ? 'Un modo para todas las habitaciones' : st.text}
+                {isSys ? 'Pone todas las habitaciones en ese modo hasta su siguiente cambio de horario' : <StateText st={st} />}
               </div>
             </div>
           </div>
@@ -196,6 +195,7 @@ export function RoomView() {
                 <div className="rm-label">Elige un modo para encenderla</div>
                 <RoomControls room={r} S={S} compact="modes" />
                 <Forecast room={r} S={S} />
+                {!isSys ? <FollowSchedule room={r} /> : null}
                 <UnknownModesNote room={r} S={S} />
               </div>
               <Band room={r} S={S} big />
@@ -244,6 +244,7 @@ export function RoomView() {
                 </div>
               ) : null}
               <Forecast room={r} S={S} />
+              {!isSys && !holiday ? <FollowSchedule room={r} /> : null}
               <Band room={r} S={S} big />
             </>
           )}

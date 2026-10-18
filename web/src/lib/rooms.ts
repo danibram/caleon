@@ -43,22 +43,29 @@ export function modeTemp(r: Room, mode: string, S: Snapshot | null): number | nu
   return v === undefined ? null : v
 }
 
-export type StateLine = { cls: string; text: string }
+
+/** What the room is doing (`text`, with `cls` heat | idle | wait | off | holiday), the mode it
+ *  follows and the setpoint it aims for; the UI draws the last two after the activity. */
+export type StateLine = { cls: string; text: string; mode?: string; target?: string }
 
 export function stateLine(r: Room): StateLine {
   const mode = modeOf(r)
   const sp = num(r.tset)
   if (r.vacation) return { cls: 'holiday', text: `Vacaciones hasta ${es(r.vacation)}` }
-  if (mode === 'off') return { cls: 'off', text: 'Apagada' }
+  if (mode === 'off') return { cls: 'off', text: 'Modo apagado' }
   const cd = (r.mode || '').split(' ')[1]
-  const base = `${MODE_LABEL[mode] || mode}${cd ? ' ' + cd : ''} · objetivo ${fmtC(sp)}°`
   const n = (r.outputs || []).filter((o) => o.on).length
-  return n
-    ? {
-        cls: 'heat',
-        text: `Calentando${n > 1 ? ` · ${n} circuitos` : ''} · objetivo ${fmtC(sp)}°`,
-      }
-    : { cls: mode, text: base }
+  const t = num(r.temperature)
+  const rest = { mode: `${MODE_LABEL[mode] || mode}${cd ? ' ' + cd : ''}`, target: `${fmtC(sp)}°` }
+  if (n) return { cls: 'heat', text: `Calentando${n > 1 ? ` · ${n} circuitos` : ''}`, ...rest }
+  // on but idle: already warm enough, or below the target while the valve stays closed
+  if (t !== null && sp !== null && t < sp) return { cls: 'wait', text: 'En espera', ...rest }
+  return { cls: 'idle', text: 'A temperatura', ...rest }
+}
+
+/** The state line as one sentence, for screen readers. */
+export function stateSentence(st: StateLine): string {
+  return [st.text, st.mode, st.target ? `objetivo ${st.target}` : null].filter(Boolean).join(', ')
 }
 
 export function roomById(S: Snapshot | null, id: number): Room | undefined {

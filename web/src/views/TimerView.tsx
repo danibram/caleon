@@ -5,14 +5,14 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
-import { Link, useBlocker, useNavigate, useParams } from 'react-router'
+import { useBlocker, useNavigate, useParams } from 'react-router'
 import { Banner } from '../components/Banner.tsx'
 import { Icon } from '../components/Icon.tsx'
 import { useApp } from '../context/AppContext.tsx'
 import { DAYS, MODE_LABEL, SYSTEM } from '../lib/constants.ts'
 import { errorMessage } from '../lib/format.ts'
 import { hhmm, modeWithTemp, nowSlotIdx, segments, todayIdx } from '../lib/schedule.ts'
-import { roomById, roomTitle } from '../lib/rooms.ts'
+import { roomById } from '../lib/rooms.ts'
 
 type TimerWeek = { days: string[][]; modes: string[] }
 
@@ -313,9 +313,6 @@ export function TimerView() {
   return (
     <>
       <Banner />
-      <Link className="back" to={`/room/${id}`}>
-        <Icon name="back" className="mini" /> {roomTitle(r)}
-      </Link>
       <div className="page-head">
         <h3>{isSys ? 'Agua caliente' : 'Horarios'}</h3>
         {showTypeSeg ? (
@@ -430,7 +427,7 @@ export function TimerView() {
                   <span className="muted small">
                     Elige un modo y{' '}
                     {coarse
-                      ? 'toca una media hora para pintarla; mantén pulsado y arrastra para pintar varias. Desliza para moverte por el día.'
+                      ? 'toca una media hora para pintarla; mantén y arrastra para varias.'
                       : 'haz clic o arrastra sobre las medias horas.'}
                   </span>
                   {day === today ? (

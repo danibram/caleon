@@ -38,6 +38,9 @@ impl Store {
              CREATE TABLE IF NOT EXISTS metrics (
                ts INTEGER NOT NULL, key TEXT NOT NULL, value REAL NOT NULL, PRIMARY KEY (ts, key));
              CREATE INDEX IF NOT EXISTS metrics_key_ts ON metrics(key, ts);
+             CREATE TABLE IF NOT EXISTS events (
+               ts INTEGER NOT NULL, source TEXT NOT NULL, room INTEGER, text TEXT NOT NULL);
+             CREATE INDEX IF NOT EXISTS events_ts ON events(ts);
              CREATE TABLE IF NOT EXISTS mode_setpoints (
                room INTEGER NOT NULL, mode TEXT NOT NULL, tset REAL NOT NULL, ts INTEGER NOT NULL,
                PRIMARY KEY (room, mode));",
@@ -113,6 +116,33 @@ impl Store {
         }
         tx.commit()?;
         Ok(())
+    }
+
+    /// Something the server did or saw (a change sent, a backup, the device going quiet).
+    pub fn add_event(&self, ts: i64, source: &str, room: Option<u16>, text: &str) {
+        let db = self.db.lock().unwrap();
+        if let Err(e) = db.execute(
+            "INSERT INTO events VALUES (?1,?2,?3,?4)",
+            params![ts, source, room, text],
+        ) {
+            tracing::warn!("events: {e}");
+        }
+        let _ = db.execute("DELETE FROM events WHERE ts < ?1", params![ts - 90 * 86400]);
+    }
+
+    /// The newest `limit` events: [{ts, source, room, text}].
+    pub fn events(&self, limit: usize) -> Result<Vec<Value>> {
+        let db = self.db.lock().unwrap();
+        let mut stmt = db.prepare(
+            "SELECT ts, source, room, text FROM events ORDER BY ts DESC, rowid DESC LIMIT ?1",
+        )?;
+        let rows = stmt.query_map([limit as i64], |r| {
+            Ok(json!({
+                "ts": r.get::<_, i64>(0)?, "source": r.get::<_, String>(1)?,
+                "room": r.get::<_, Option<i64>>(2)?, "text": r.get::<_, String>(3)?,
+            }))
+        })?;
+        Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
     }
 
     /// Setpoint of a mode read by visiting it; kept across restarts.
