@@ -158,7 +158,7 @@ checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 
 [[package]]
 name = "caleon"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "anyhow",
  "roxmltree",
@@ -170,7 +170,7 @@ dependencies = [
 
 [[package]]
 name = "caleon-server"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "anyhow",
  "axum",
