@@ -452,6 +452,52 @@ impl WeatherRuntime {
                 }
                 Err(_) => report.failed_queries += 1,
             }
+            // AEMET only serves the last hours: older gaps in an AEMET period come from Open-Meteo at
+            // the home's location, stored with their own source so they read as estimates
+            if period.selection.provider() == ProviderId::Aemet && self.current(revision) {
+                let have: std::collections::HashSet<i64> = app
+                    .store
+                    .weather_history(range, true)?
+                    .iter()
+                    .filter(|p| p.period_id == period.id)
+                    .map(|p| p.sample.ts / 3600)
+                    .collect();
+                let missing: std::collections::BTreeSet<i64> = eligible
+                    .iter()
+                    .flat_map(|r| (r.start / 3600)..=((r.end - 1) / 3600))
+                    .filter(|hour| !have.contains(hour))
+                    .collect();
+                if let (Some(&first), Some(&last)) = (missing.first(), missing.last()) {
+                    let backup = Selection {
+                        location: period.selection.location.clone(),
+                        target: SelectionTarget::OpenMeteo,
+                    };
+                    match self
+                        .provider(&backup, config)?
+                        .temperatures(
+                            &backup,
+                            TimeRange {
+                                start: first * 3600,
+                                end: (last + 1) * 3600,
+                            },
+                        )
+                        .await
+                    {
+                        Ok(mut batches) => {
+                            for batch in &mut batches {
+                                batch.samples.retain(|sample| {
+                                    missing.contains(&(sample.ts / 3600))
+                                        && eligible
+                                            .iter()
+                                            .any(|r| sample.ts >= r.start && sample.ts < r.end)
+                                });
+                            }
+                            self.persist(app, config, revision, period.id, batches)?;
+                        }
+                        Err(_) => report.failed_queries += 1,
+                    }
+                }
+            }
         }
         let after = app.store.weather_history(range, true)?;
         let covered = |points: &[WeatherPoint], ts: i64| {
@@ -1066,6 +1112,66 @@ mod tests {
         assert_eq!(points.len(), 1);
         assert_eq!(points[0].sample.ts, recent);
     }
+    #[tokio::test]
+    async fn recovery_fills_old_aemet_gaps_from_open_meteo() {
+        let ts = now() / 3600 * 3600;
+        let old = ts - 2 * 86400;
+        let mut config = config(true);
+        config.selection_since = Some(old - 3600);
+        // AEMET answers with the last hour only; Open-Meteo has the old one
+        let f = fixture(
+            config.clone(),
+            true,
+            vec![Ok(batches(true, ts - 3600))],
+            vec![Ok(batches(false, old))],
+            None,
+        );
+        f.app
+            .store
+            .select_weather_source(config.selection.as_ref().unwrap(), old - 3600)
+            .unwrap();
+        for at in [old + 60, ts - 3600 + 60] {
+            f.app
+                .store
+                .add_rooms(
+                    at,
+                    &[RoomSample {
+                        room: 0,
+                        temperature: Some(21.0),
+                        humidity: None,
+                        tset: None,
+                        mode: "off".into(),
+                    }],
+                )
+                .unwrap();
+        }
+        let report = f
+            .app
+            .weather
+            .recover_history(&f.app, &config, 0)
+            .await
+            .unwrap();
+        assert_eq!(report.recovered_hours, 2);
+        assert_eq!(report.remaining_hours, 0);
+        let points = f
+            .app
+            .store
+            .weather_history(
+                TimeRange {
+                    start: 0,
+                    end: now() + 1,
+                },
+                true,
+            )
+            .unwrap();
+        assert!(points
+            .iter()
+            .any(|p| p.sample.ts == old && p.source.provider == ProviderId::OpenMeteo));
+        assert!(points
+            .iter()
+            .any(|p| p.sample.ts == ts - 3600 && p.source.provider == ProviderId::Aemet));
+    }
+
     #[tokio::test]
     async fn a_period_that_just_began_waits_for_its_first_hourly_sample() {
         let mut config = config(true);
