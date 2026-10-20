@@ -163,12 +163,15 @@ Settings) it also works on a normal bridge network publishing port 8088.
 Docker Desktop on macOS does not let containers reach the LAN over UDP (not even a minimal script), so on a Mac
 the container cannot find the thermostat. A Linux NAS has no such problem.
 
+Weather settings and encrypted API keys live in SQLite. The master key stays in a separate file. See [credential storage and Docker secrets](docs/weather-credentials.md) for setup and backup instructions.
+
 ### Configuration (environment variables)
 
 | Variable | Default | |
 |---|---|---|
 | `BIND` | `0.0.0.0:8088` | address and port of the web UI |
-| `DATA_DIR` | `/data` in Docker | `settings.json`, `history.sqlite` and `backups/` |
+| `DATA_DIR` | `/data` in Docker | `settings.json`, `history.sqlite`, optional `secrets.key` and `backups/` |
+| `CALEON_SECRETS_KEY_FILE` | `DATA_DIR/secrets.key` | external 32-byte binary master key file for encrypted provider credentials; must exist when set |
 | `CALEON_HOST` | discovery | fixed IP of the thermostat, for example `192.168.1.50` |
 | `CALEON_DEVICE` | first to answer | device ID when you have several, for example `0123456789ab.sorel-connect.net` |
 | `TRANSPORT` | `udp` | initial mode (`udp`, `session` or `sdk`); afterwards the choice in Settings wins |

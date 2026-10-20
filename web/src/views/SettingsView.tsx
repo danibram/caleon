@@ -4,6 +4,7 @@ import { ActionRow } from '../components/ActionRow.tsx'
 import { useApp } from '../context/AppContext.tsx'
 import { errorMessage, fmtFirmware } from '../lib/format.ts'
 import { applyTheme, type ThemeChoice } from '../lib/theme.ts'
+import { WeatherSettings } from '../components/WeatherSettings.tsx'
 
 const TRANSPORTS: Record<string, [string, string]> = {
   udp: [
@@ -139,6 +140,7 @@ export function SettingsView() {
           </div>
         </details>
       </div>
+      <WeatherSettings />
       <h2 className="group-title">Apariencia</h2>
       <div className="card">
         <div className="spread">

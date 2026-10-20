@@ -7,6 +7,8 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::Mutex;
 
+mod weather;
+
 pub struct Store {
     db: Mutex<Connection>,
     /// Last setpoint seen per (room, mode). Kept in memory because /api/state asks for it on every
@@ -45,6 +47,7 @@ impl Store {
                room INTEGER NOT NULL, mode TEXT NOT NULL, tset REAL NOT NULL, ts INTEGER NOT NULL,
                PRIMARY KEY (room, mode));",
         )?;
+        weather::initialize(&db)?;
         let mut temps = BTreeMap::new();
         {
             let mut stmt = db.prepare(

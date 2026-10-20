@@ -163,12 +163,15 @@ Ajustes), también funciona con una red bridge normal publicando el puerto 8088.
 Docker Desktop en macOS no deja que los contenedores lleguen a la LAN por UDP (ni siquiera un script mínimo), así
 que en el Mac el contenedor no encuentra el termostato. En un NAS Linux no pasa.
 
+La configuración meteorológica y las API keys cifradas se guardan en SQLite. La clave maestra queda en un archivo separado. Consulta [credenciales y secretos de Docker](docs/weather-credentials.md) para la configuración y las copias.
+
 ### Configuración (variables de entorno)
 
 | Variable | Por defecto | |
 |---|---|---|
 | `BIND` | `0.0.0.0:8088` | dirección y puerto de la web |
-| `DATA_DIR` | `/data` en Docker | `settings.json`, `history.sqlite` y `backups/` |
+| `DATA_DIR` | `/data` en Docker | `settings.json`, `history.sqlite`, `secrets.key` opcional y `backups/` |
+| `CALEON_SECRETS_KEY_FILE` | `DATA_DIR/secrets.key` | archivo externo de clave maestra de 32 bytes binarios; debe existir si se indica |
 | `CALEON_HOST` | descubrimiento | IP fija del termostato, por ejemplo `192.168.1.50` |
 | `CALEON_DEVICE` | el primero que responda | ID del equipo si tienes varios, por ejemplo `0123456789ab.sorel-connect.net` |
 | `TRANSPORT` | `udp` | modo inicial (`udp`, `session` o `sdk`); después manda lo elegido en Ajustes |

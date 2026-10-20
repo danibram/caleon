@@ -29,6 +29,22 @@ impl From<anyhow::Error> for ApiError {
     }
 }
 
+/// Weather errors: a provider failure is a bad gateway, a storage failure is ours, anything else
+/// is a message about the request.
+fn weather_error(e: anyhow::Error) -> ApiError {
+    let status = if e.is::<crate::weather::ProviderError>() {
+        StatusCode::BAD_GATEWAY
+    } else if e.is::<rusqlite::Error>()
+        || e.is::<std::io::Error>()
+        || e.is::<tokio::task::JoinError>()
+    {
+        StatusCode::INTERNAL_SERVER_ERROR
+    } else {
+        StatusCode::BAD_REQUEST
+    };
+    ApiError(status, e.to_string())
+}
+
 fn guard_write(app: &App) -> Result<(), ApiError> {
     if app.read_only {
         Err(ApiError(
@@ -147,6 +163,11 @@ pub fn router(app: AppState) -> Router {
         .route("/api/menu/open", post(menu_open))
         .route("/api/menu/values", get(menu_values))
         .route("/api/settings", get(settings_get).post(settings_set))
+        .route("/api/weather", get(weather_get).post(weather_set))
+        .route("/api/weather/locations", get(weather_locations))
+        .route("/api/weather/stations", post(weather_stations))
+        .route("/api/weather/history", get(weather_history))
+        .route("/api/weather/recover", post(weather_recover))
         .route("/api/backups", get(backups_list).post(backup_create))
         .route("/api/backups/:name", get(backup_get).delete(backup_delete))
         .route("/api/backups/:name/restore", post(backup_restore));
@@ -1105,4 +1126,88 @@ async fn menu_values(State(app): State<AppState>) -> ApiResult {
         Ok(json!({"created": backup["created"], "values": flat.into_iter().map(|(k, v)| (k, Value::String(v))).collect::<serde_json::Map<String, Value>>()}))
     })
     .await?))
+}
+
+async fn weather_get(State(app): State<AppState>) -> Json<crate::weather::runtime::WeatherView> {
+    Json(app.weather.view())
+}
+
+async fn weather_set(
+    State(app): State<AppState>,
+    Json(input): Json<crate::weather::runtime::WeatherUpdate>,
+) -> ApiResult {
+    let view = app.weather.save(&app, input).await.map_err(weather_error)?;
+    Ok(Json(
+        serde_json::to_value(view).map_err(anyhow::Error::from)?,
+    ))
+}
+
+#[derive(Deserialize)]
+struct WeatherLocationQuery {
+    name: String,
+}
+
+async fn weather_locations(
+    State(app): State<AppState>,
+    Query(query): Query<WeatherLocationQuery>,
+) -> ApiResult {
+    let locations = crate::weather::open_meteo::OpenMeteo::new(app.weather.client.clone())
+        .locations(&query.name)
+        .await
+        .map_err(anyhow::Error::from)?;
+    Ok(Json(
+        serde_json::to_value(locations).map_err(anyhow::Error::from)?,
+    ))
+}
+
+#[derive(Deserialize)]
+struct WeatherStationsQuery {
+    location: crate::weather::Coordinates,
+    aemet_api_key: Option<String>,
+}
+
+async fn weather_stations(
+    State(app): State<AppState>,
+    Json(query): Json<WeatherStationsQuery>,
+) -> ApiResult {
+    use crate::weather::WeatherProvider;
+    query.location.validate().map_err(weather_error)?;
+    let key = app
+        .weather
+        .configured_key(query.aemet_api_key)
+        .map_err(weather_error)?;
+    let stations = crate::weather::aemet::Aemet::new(app.weather.client.clone(), key)
+        .stations(query.location)
+        .await
+        .map_err(anyhow::Error::from)?;
+    Ok(Json(
+        serde_json::to_value(stations).map_err(anyhow::Error::from)?,
+    ))
+}
+
+async fn weather_history(
+    State(app): State<AppState>,
+    Query(query): Query<HoursQuery>,
+) -> ApiResult {
+    let hours = query.hours.unwrap_or(24.0);
+    if !hours.is_finite() || hours <= 0.0 || hours > 720.0 {
+        return Err(bad("El periodo debe estar entre 0 y 720 horas"));
+    }
+    let range = crate::weather::TimeRange {
+        start: (now() - (hours * 3600.0) as i64).max(0),
+        end: now() + 1,
+    };
+    Ok(Json(
+        blocking(&app, move |app| {
+            Ok(serde_json::to_value(
+                app.store.weather_history(range, true)?,
+            )?)
+        })
+        .await?,
+    ))
+}
+
+async fn weather_recover(State(app): State<AppState>) -> ApiResult {
+    app.weather.request_recovery().map_err(weather_error)?;
+    Ok(Json(json!({"started":true})))
 }

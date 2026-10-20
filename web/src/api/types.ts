@@ -5,6 +5,10 @@ import type { Snapshot as SnapshotBase } from './generated/Snapshot.ts'
 
 export type { Metric, RoomState }
 export type { Settings } from './generated/Settings.ts'
+export type { WeatherSettings } from './generated/WeatherSettings.ts'
+export type { WeatherPoint } from './generated/WeatherPoint.ts'
+export type { SelectionPeriod } from './generated/SelectionPeriod.ts'
+export type { StationCandidate } from './generated/StationCandidate.ts'
 
 /** The server flattens the room's RoomState into it; outdoor sensors have none. */
 export type Room = RoomBase & Partial<RoomState>

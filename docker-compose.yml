@@ -15,6 +15,7 @@ services:
       # CALEON_HOST: "192.168.1.50"        # fixed IP instead of broadcast discovery
       # TRANSPORT: "udp"                   # initial mode (udp/session/sdk); later changed in Ajustes
       # CALEON_EMAIL: "tu-correo@ejemplo.com"  # only for the "session" mode
+      # CALEON_SECRETS_KEY_FILE: "/run/secrets/caleon_master_key" # see docs/weather-credentials.md
       # POLL_SECONDS: "60"
       # BACKUP_HOURS: "24"
       # BACKUP_KEEP: "30"

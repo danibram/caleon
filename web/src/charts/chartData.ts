@@ -1,7 +1,17 @@
+import type { RefObject } from 'react'
 import { api } from '../api/client.ts'
 import type { HistoryResponse, MetricPoint, MetricsResponse, StateSnapshot } from '../api/types.ts'
 import { modeOf, roomTitle } from '../lib/rooms.ts'
-import { deblip, lineChart, onIntervals, type ChartSeries } from './lineChart.ts'
+import { deblip, lineChart, onIntervals, type ChartSeries, type LineChartArgs } from './lineChart.ts'
+
+/** options passed through to lineChart for a chart stacked with others */
+export type PanelOptions = Pick<LineChartArgs, 'sync' | 'label' | 'showTime' | 'axis' | 'laneNames'> & {
+  readout?: RefObject<HTMLDivElement | null>
+  floating?: RefObject<HTMLDivElement | null>
+}
+
+export const panelArgs = (panel?: PanelOptions): Partial<LineChartArgs> =>
+  panel ? { ...panel, readout: panel.readout?.current, floating: panel.floating?.current } : {}
 
 export const PROBES = [
   'oklch(0.6 0.16 345)',
@@ -49,6 +59,9 @@ export async function drawRoomChart({
   state,
   onlyRoom,
   what = 'temp',
+  timeRange,
+  panel,
+  heat = false,
 }: {
   svg: SVGSVGElement
   legend: HTMLElement
@@ -56,12 +69,20 @@ export async function drawRoomChart({
   state: StateSnapshot
   onlyRoom: string | null
   what?: 'temp' | 'hum'
+  timeRange?: [number, number]
+  panel?: PanelOptions
+  /** attach each room's valve states, so the readout can say which rooms are heating */
+  heat?: boolean
 }): Promise<void> {
   const tok = (chartTokens.get(svg) || 0) + 1
   chartTokens.set(svg, tok)
   let data: HistoryResponse
+  let metrics: MetricsResponse | null = null
   try {
-    data = await api<HistoryResponse>(`/api/history?hours=${hours}`)
+    ;[data, metrics] = await Promise.all([
+      api<HistoryResponse>(`/api/history?hours=${hours}`),
+      heat ? api<MetricsResponse>(`/api/metrics?hours=${hours}`) : null,
+    ])
   } catch {
     return
   }
@@ -84,17 +105,28 @@ export async function drawRoomChart({
             rows.map((x): MetricPoint => [x[0], x[2]]),
             0.6,
           ),
+          current: r ? Number.parseFloat(String(r.humidity).replace(',', '.')) || null : null,
         })
       return
     }
+    const live = (v: string | undefined) => {
+      const n = Number.parseFloat(String(v ?? '').replace(',', '.'))
+      return Number.isFinite(n) ? n : null
+    }
+    const off = !r || modeOf(r) === 'off'
     const main: ChartSeries = {
       name,
       color: c,
       step: true,
       points: deblip(rows.map((x): MetricPoint => [x[0], x[1]])),
+      // the same reading Inicio shows, so "Ahora" agrees across pages
+      current: r ? live(r.temperature) : null,
+      note: r && off ? 'apagada' : undefined,
+      heat: metrics && r ? r.outputs.map((o) => metrics[`Salidas · ${o.label}`] ?? []) : undefined,
     }
     series.push(main)
-    if (r && modeOf(r) !== 'off') {
+    // the stored target, not today's mode: a room switched off now still shows the target it had
+    if (r && (onlyRoom === null || modeOf(r) !== 'off') && rows.some((x) => x[3] !== null)) {
       const tset: ChartSeries = {
         name: onlyRoom === null ? name + ' · objetivo' : 'Objetivo',
         color: c,
@@ -102,6 +134,7 @@ export async function drawRoomChart({
         step: true,
         noLegend: onlyRoom === null,
         points: rows.map((x): MetricPoint => [x[0], x[3]]),
+        current: live(r.tset),
       }
       if (onlyRoom === null) {
         main.twins = [tset]
@@ -122,5 +155,5 @@ export async function drawRoomChart({
     }
     if (chartTokens.get(svg) !== tok) return
   }
-  lineChart({ svg, legend, series, hours, yUnit: what === 'hum' ? '%' : '°', bands })
+  lineChart({ svg, legend, series, hours, yUnit: what === 'hum' ? '%' : '°', bands, timeRange, ...panelArgs(panel) })
 }

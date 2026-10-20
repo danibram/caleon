@@ -1,14 +1,21 @@
-import { useEffect, useEffectEvent, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { weatherQuery } from '../lib/weather.ts'
+import { WeatherChart, WeatherFoot } from './WeatherChart.tsx'
 import { api } from '../api/client.ts'
 import type { MetricPoint, MetricsResponse, StateSnapshot } from '../api/types.ts'
 import { useApp } from '../context/AppContext.tsx'
 import { isPresent } from '../lib/guards.ts'
 import { metricName } from '../lib/metrics.ts'
-import { modeOf, roomTitle } from '../lib/rooms.ts'
-import { bestRange, PROBES } from './chartData.ts'
-import { lineChart } from './lineChart.ts'
+import { roomTitle } from '../lib/rooms.ts'
+import { bestRange, historySpan, panelArgs, PROBES, type PanelOptions } from './chartData.ts'
+import { lineChart, unsync } from './lineChart.ts'
 import { RangeSeg } from './RangeSeg.tsx'
 import { RoomChart } from './RoomChart.tsx'
+
+/** every chart on this page shares one time axis and one hover cursor */
+const SYNC = 'charts'
+const SYNC_ONLY: PanelOptions = { sync: SYNC }
 
 export function ChartsView() {
   const { S } = useApp()
@@ -19,6 +26,12 @@ export function ChartsView() {
 function Charts({ state }: { state: StateSnapshot }) {
   const [hours, setHours] = useState(() => bestRange({ ranges: [6, 24, 168, 720], want: 24, state }))
   const drawTok = useRef(0)
+  const metrics = useRef<MetricsResponse | null>(null)
+  const { data: weather } = useQuery(weatherQuery)
+  const timeRange = useMemo<[number, number]>(() => {
+    const end = state.updated ?? 0
+    return [end - hours * 3600, end]
+  }, [hours, state.updated])
 
   const c3SvgRef = useRef<SVGSVGElement>(null)
   const c3LegendRef = useRef<HTMLDivElement>(null)
@@ -26,22 +39,33 @@ function Charts({ state }: { state: StateSnapshot }) {
   const c4LegendRef = useRef<HTMLDivElement>(null)
   const c3CardRef = useRef<HTMLDivElement>(null)
   const c4CardRef = useRef<HTMLDivElement>(null)
+  const roomsReadout = useRef<HTMLDivElement>(null)
+  const heatReadout = useRef<HTMLDivElement>(null)
+  const outReadout = useRef<HTMLDivElement>(null)
+  const roomsLegend = useRef<HTMLDivElement>(null)
+  const weatherOn = weather?.settings.enabled ?? false
+  // the stacked figure: one readout block on top, the time axis only under the last panel
+  const tip = useRef<HTMLDivElement>(null)
+  const roomsPanel = useMemo<PanelOptions>(
+    () => ({ sync: SYNC, readout: roomsReadout, axis: false, floating: tip }),
+    [],
+  )
+  const heatPanel = useMemo<PanelOptions>(
+    () => ({ sync: SYNC, readout: heatReadout, showTime: false, laneNames: false }),
+    [],
+  )
+  const outPanel = useMemo<PanelOptions>(
+    () => ({ sync: SYNC, readout: outReadout, showTime: false, axis: false }),
+    [],
+  )
 
-  const outCount = (state.status || []).filter((m) => m.group === 'Salidas' && metricName(m, state)).length
 
   const humRooms = state.rooms.filter((r) => r.humidity && r.humidity !== '--')
   const humSuffix = humRooms.length === 1 ? ' · ' + roomTitle(humRooms[0]) : ''
 
-  // reads the snapshot at call time: the metric charts redraw on the timer, not on every state refresh
-  const drawMetrics = useEffectEvent(async () => {
-    const tok = ++drawTok.current
-    let m: MetricsResponse
-    try {
-      m = await api<MetricsResponse>(`/api/metrics?hours=${hours}`)
-    } catch {
-      return
-    }
-    if (tok !== drawTok.current) return
+  const drawMetrics = useEffectEvent(() => {
+    const m = metrics.current
+    if (!m) return
 
     const c4Svg = c4SvgRef.current
     const c4Legend = c4LegendRef.current
@@ -61,24 +85,29 @@ function Charts({ state }: { state: StateSnapshot }) {
         !/^(Sensor|Humedad) de /.test(name) &&
         points.some((p) => p[1] !== null),
     )
-    const outputs = named
-      .filter(({ key }) => key.startsWith('Salidas'))
-      .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+    const outputs = named.filter(({ key }) => key.startsWith('Salidas'))
+    const pump = outputs.find(({ name }) => /Bomba/.test(name))
+    const demand = outputs.find(({ name }) => /caldera/i.test(name))
+    const plant = [
+      ...(pump ? [{ ...pump, label: 'Bomba' }] : []),
+      ...(demand ? [{ ...demand, label: 'Caldera' }] : []),
+    ]
 
     lineChart({
       svg: c4Svg,
       legend: c4Legend,
-      series: outputs.map(({ name, points }) => ({
-        name,
-        color: /Bomba|caldera/.test(name) ? 'var(--cool)' : 'var(--accent)',
+      series: plant.map(({ points, label }) => ({
+        name: label,
+        readoutName: label,
+        color: 'color-mix(in oklch, var(--muted) 70%, var(--card))',
         points,
         noLegend: true,
       })),
       hours,
       lanes: true,
+      timeRange,
+      ...panelArgs(heatPanel),
     })
-    const c4Card = c4CardRef.current
-    if (c4Card && c4Svg.style.display === 'none') c4Card.classList.add('collapsed')
 
     const varies = (points: MetricPoint[]) => {
       const v = points.map((p) => p[1]).filter(isPresent)
@@ -99,18 +128,61 @@ function Charts({ state }: { state: StateSnapshot }) {
       })),
       hours,
       yUnit: '°',
+      timeRange,
+      sync: SYNC,
     })
   })
 
+
+  // fetches on the timer; a new snapshot only moves the time axis, so the cursor stays aligned with the room charts
+  const fetchMetrics = useEffectEvent(async () => {
+    const tok = ++drawTok.current
+    try {
+      const m = await api<MetricsResponse>(`/api/metrics?hours=${hours}`)
+      if (tok !== drawTok.current) return
+      metrics.current = m
+      drawMetrics()
+    } catch {
+      /* keep the last drawing */
+    }
+  })
   useEffect(() => {
-    void drawMetrics()
+    metrics.current = null
+    void fetchMetrics()
     const id = window.setInterval(() => {
-      void drawMetrics()
+      void fetchMetrics()
     }, 60000)
     return () => clearInterval(id)
   }, [hours])
 
-  const laneHeight = Math.max(120, 34 * outCount + 36)
+  useEffect(() => {
+    drawMetrics()
+  }, [timeRange, heatPanel])
+
+  useEffect(() => {
+    const c3 = c3SvgRef.current
+    const c4 = c4SvgRef.current
+    return () => {
+      if (c3) unsync(c3)
+      if (c4) unsync(c4)
+    }
+  }, [])
+
+  useEffect(() => {
+    const card = c4CardRef.current
+    if (!card) return
+    let width = card.clientWidth
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry && entry.contentRect.width > 0 && Math.abs(entry.contentRect.width - width) > 1) {
+        width = entry.contentRect.width
+        drawMetrics()
+      }
+    })
+    observer.observe(card)
+    return () => observer.disconnect()
+  }, [])
+
+  const laneHeight = 12 * 2 + 4 + 24
 
   return (
     <>
@@ -124,36 +196,54 @@ function Charts({ state }: { state: StateSnapshot }) {
           onChange={setHours}
         />
       </div>
-
-      <div className="card chart-card">
-        <div className="chart-head">
-          <b>Temperatura</b>
-          {state.rooms.some((r) => modeOf(r) !== 'off') ? (
-            <span className="muted small">Discontinua: objetivo</span>
-          ) : null}
-        </div>
-        <RoomChart hours={hours} state={state} svgId="c1" what="temp" />
-        <p className="muted small">
-          Los sensores del propio termostato muestran décimas, pero su precisión es de ±1 °C y ±6 % de humedad.
+      {historySpan(state) < 168 * 3600 * 0.3 ? (
+        <p className="muted small range-note">
+          Hay {Math.max(1, Math.round(historySpan(state) / 3600))} h de historial. 7 y 30 días se activan con más.
         </p>
-      </div>
+      ) : null}
+
+      <section className="card chart-card stacked" ref={c4CardRef} aria-label="Temperatura, calefacción y exterior">
+        <div className="chart-head">
+          <b>Temperatura, calefacción y exterior</b>
+          <div className="legend" ref={roomsLegend} id="l1" />
+        </div>
+        <div className="chart-tip" ref={tip} hidden>
+          <div ref={roomsReadout} />
+          {weatherOn ? <div ref={outReadout} /> : null}
+          <div ref={heatReadout} />
+        </div>
+        <p className="chart-panel-label">Interior · °C</p>
+        <RoomChart
+          hours={hours}
+          state={state}
+          svgId="c1"
+          what="temp"
+          style={{ height: 180 }}
+          timeRange={timeRange}
+          panel={roomsPanel}
+          legend={roomsLegend}
+          heat
+        />
+        {weather && weatherOn ? (
+          <WeatherChart view={weather} hours={hours} timeRange={timeRange} panel={outPanel} />
+        ) : null}
+        <div className="chart-panel">
+          <div className="chart-wrap">
+            <svg ref={c4SvgRef} className="chart" id="c4" style={{ height: laneHeight }} />
+          </div>
+          <div className="legend" ref={c4LegendRef} id="l4" />
+        </div>
+        {weather && weatherOn ? <WeatherFoot view={weather} hours={hours} /> : null}
+        <p className="chart-foot muted small">
+          Tramo animado: la habitación está calentando. Discontinua: su objetivo. Precisión de los sensores ±1 °C.
+        </p>
+      </section>
 
       <div className="card chart-card">
         <div className="chart-head">
           <b>Humedad{humSuffix}</b>
         </div>
-        <RoomChart hours={hours} state={state} svgId="c2" what="hum" style={{ height: 180 }} />
-      </div>
-
-      <div className="card chart-card" ref={c4CardRef}>
-        <div className="chart-head">
-          <b>Cuándo ha calentado cada habitación</b>
-          <span className="muted small">Según las válvulas de cada zona</span>
-        </div>
-        <div className="chart-wrap">
-          <svg ref={c4SvgRef} className="chart" id="c4" style={{ height: laneHeight }} />
-        </div>
-        <div className="legend" ref={c4LegendRef} id="l4" />
+        <RoomChart hours={hours} state={state} svgId="c2" what="hum" style={{ height: 180 }} timeRange={timeRange} panel={SYNC_ONLY} />
       </div>
 
       <div className="card chart-card" ref={c3CardRef}>

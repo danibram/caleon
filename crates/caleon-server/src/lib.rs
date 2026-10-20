@@ -3,8 +3,10 @@
 
 pub mod app;
 pub mod connection;
+mod credentials;
 pub mod mqtt;
 pub mod store;
+pub mod weather;
 pub mod web;
 
 use anyhow::{Context, Result};
@@ -50,6 +52,7 @@ pub async fn run() -> Result<()> {
     let app = Arc::new(app::App {
         device: caleon::Device::new(device_id.clone(), transport),
         store: store::Store::open(&data_dir.join("history.sqlite"))?,
+        weather: weather::runtime::WeatherRuntime::new(&data_dir, history)?,
         data_dir: data_dir.clone(),
         snapshot: RwLock::new(app::Snapshot {
             device: device_id.clone(),
@@ -111,6 +114,8 @@ pub async fn run() -> Result<()> {
         None,
         format!("Servidor iniciado · v{}", env!("CARGO_PKG_VERSION")),
     );
+
+    weather::runtime::spawn(app.clone());
 
     if let Some(cfg) = mqtt {
         tracing::info!(

@@ -74,6 +74,7 @@ const READ_ONLY = { error: 'Modo solo lectura: este servidor no puede cambiar el
 
 function route(method: string, path: string): [number, unknown] {
   if (method === 'GET') {
+    if (path === '/api/weather') return [200, { settings: { enabled: false, selection: null, aemet_key_configured: false }, status: { effective_provider: null, last_sample_at: null, last_success_at: null, backup_since: null, error: null, recovering: false, recovery: null }, history_enabled: true, aemet_api_key_url: 'https://opendata.aemet.es/centrodedescargas/altaUsuario' }]
     if (path === '/api/state') return [200, shifted().state]
     if (path === '/api/history') return [200, shifted().history]
     if (path === '/api/metrics') return [200, shifted().metrics]
@@ -111,6 +112,7 @@ export function mockApi(): Plugin {
           return
         }
         if (!url.pathname.startsWith('/api/')) return next()
+        if (url.pathname.startsWith('/api/weather') && process.env.CALEON_WEATHER_API) return next()
         const [status, body] = route(req.method ?? 'GET', url.pathname)
         res.statusCode = status
         res.setHeader('Content-Type', 'application/json')

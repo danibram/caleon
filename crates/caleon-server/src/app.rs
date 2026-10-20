@@ -17,6 +17,7 @@ use ts_rs::TS;
 pub struct App {
     pub device: Device,
     pub store: Store,
+    pub weather: crate::weather::runtime::WeatherRuntime,
     pub data_dir: PathBuf,
     pub snapshot: RwLock<Snapshot>,
     /// Set while a crawl walks the device menu, which moves the device's menu cursor.

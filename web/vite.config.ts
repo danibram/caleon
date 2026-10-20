@@ -11,7 +11,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), ...(mock ? [mockApi()] : [])],
   server: {
     proxy: mock
-      ? undefined
+      ? process.env.CALEON_WEATHER_API ? { '/api/weather': process.env.CALEON_WEATHER_API } : undefined
       : {
           '/api': api,
           '/icons': api,

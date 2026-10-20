@@ -8,3 +8,6 @@ web/dist/
 .DS_Store
 /*.png
 contrib/stack/data/
+# Credential master keys stay outside source control.
+/secrets/
+secrets.key
